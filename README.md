@@ -78,3 +78,4 @@ If you want, the next step can be a deployment pass for Render, Railway, Fly.io,
 - `Reset demo data` restores the local runtime database from [data/production-db.json](/Users/bojch/Documents/CODEX/data/production-db.json).
 - Producers/admins have full access by default; viewers and team members can be assigned module-by-module view/edit rights from the `Team & Access` screen.
 - Permissions now support `no access`, `view`, and `edit`.
+- GitHub workflow: Codex edits your local repo first; changes appear in GitHub Desktop and only reach GitHub after commit + push.
