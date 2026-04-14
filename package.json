@@ -1,11 +1,22 @@
 {
-  "name": "frameforge-production-os",
-  "version": "1.0.0",
+  "name": "radar-domace",
+  "version": "0.1.0",
   "private": true,
-  "description": "A polished film production management app starter inspired by StudioBinder-style workflows.",
+  "description": "Radar Domače monorepo with Expo mobile, Next.js portal/admin, and Supabase backend.",
+  "packageManager": "npm@10.8.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js",
-    "test": "node --test"
+    "dev:web": "npm run dev --workspace @radar-domace/web",
+    "dev:mobile": "npm run dev --workspace @radar-domace/mobile",
+    "build:web": "npm run build --workspace @radar-domace/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "db:types": "supabase gen types typescript --project-id \"$SUPABASE_PROJECT_ID\" --schema public > packages/types/src/database.generated.ts",
+    "db:reset": "supabase db reset",
+    "db:push": "supabase db push",
+    "seed:demo": "supabase db reset --linked"
   }
 }

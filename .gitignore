@@ -1,3 +1,13 @@
-.env
-data/*.local.json
+node_modules
+.next
+.expo
+dist
+coverage
+.turbo
+.DS_Store
 *.log
+apps/web/.next
+apps/mobile/.expo
+apps/mobile/dist
+supabase/.temp
+data/*.local.json

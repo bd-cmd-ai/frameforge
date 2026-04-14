@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Radar Domače",
+    "slug": "radar-domace",
+    "scheme": "radardomace",
+    "orientation": "portrait",
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    }
+  }
+}

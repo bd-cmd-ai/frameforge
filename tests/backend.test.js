@@ -1,191 +1,103 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs/promises");
+const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const {
-  createStore,
-  buildDashboard,
-  sanitizeCollectionItem,
-  sanitizeUser,
-  canEditModule,
-  canViewModule,
-  normalizeAccess,
-  normalizeEmailList,
-} = require("../backend");
+const { createStore } = require("../backend");
 
-test("store bootstraps from seed and supports CRUD operations", async () => {
-  const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "frameforge-"));
-  const dataFile = path.join(tempRoot, "production-db.json");
-  const store = createStore(dataFile);
-
-  await store.init();
-
-  const initial = store.getPublicState();
-  assert.equal(initial.project.title, "Midnight Sun");
-  assert.equal(initial.settings.currency, "EUR");
-  assert.equal(initial.callsheet.status, "Draft");
-  assert.ok(initial.schedule.length > 0);
-
-  const created = await store.createItem("tasks", {
-    title: "Book intimacy coordinator",
-    owner: "Production",
-    due: "2026-05-30",
-    priority: "high",
-    status: "Not Started",
-  });
-
-  assert.equal(created.title, "Book intimacy coordinator");
-
-  const updated = await store.updateItem("tasks", created.id, {
-    status: "In Progress",
-  });
-
-  assert.equal(updated.status, "In Progress");
-
-  const deleted = await store.deleteItem("tasks", created.id);
-  assert.equal(deleted, true);
-
-  const stateAfterDelete = store.getPublicState();
-  assert.equal(stateAfterDelete.tasks.some((item) => item.id === created.id), false);
-});
-
-test("store can bootstrap runtime data from a tracked seed file and reset back to it", async () => {
-  const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "frameforge-seed-"));
-  const seedFile = path.join(tempRoot, "production-db.json");
-  const runtimeFile = path.join(tempRoot, "production-db.local.json");
-
-  await fs.writeFile(
+function createTempStore(options = {}) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "frameforge-"));
+  const seedFile = path.join(root, "seed.json");
+  const dataFile = path.join(root, "runtime.json");
+  const uploadsDir = path.join(root, "uploads", "assets");
+  fs.mkdirSync(path.dirname(seedFile), { recursive: true });
+  fs.writeFileSync(
     seedFile,
     JSON.stringify(
       {
+        settings: {
+          studioName: "FrameForge",
+          companyName: "Production Office",
+          locale: "sl-SI",
+          currency: "EUR",
+          timezone: "Europe/Ljubljana",
+          weatherLocation: "Ljubljana, Slovenia",
+          weatherUpdatedAt: "",
+          forecastDays: [{ date: "2026-05-12", summary: "Clear", min: 8, max: 19, sunrise: "05:18", sunset: "20:34" }],
+        },
         project: {
-          title: "Seed Project",
+          title: "Midnight Sun",
+          format: "Feature",
+          stage: "Prep",
+          shootStart: "2026-05-12",
+          shootEnd: "2026-07-02",
+          location: "Ljubljana, Slovenia",
+          description: "",
         },
         users: [
           {
-            id: "seed-user",
-            name: "Seed Producer",
-            email: "seed@frameforge.app",
+            id: "u1",
+            name: "Producer",
+            email: "producer@frameforge.app",
+            role: "producer",
+            authProvider: "local",
             password: "demo123",
-            role: "Producer",
-            title: "Producer",
-            department: "Production",
-            access: {
+            permissions: {
+              dashboard: "edit",
               project: "edit",
-              schedule: "edit",
-              scenes: "edit",
-              callsheet: "edit",
-              contacts: "edit",
-              tasks: "edit",
-              budget: "edit",
+              callsheets: "edit",
               assets: "edit",
+              settings: "edit",
               team: "edit",
             },
+            createdAt: "2026-04-14T08:00:00.000Z",
           },
         ],
+        callsheets: [],
+        assets: [],
       },
       null,
       2
     )
   );
-
-  const store = createStore({ dataFile: runtimeFile, seedFile });
-  await store.init();
-
-  const initial = store.getPublicState();
-  assert.equal(initial.project.title, "Seed Project");
-  assert.equal(initial.settings.currency, "EUR");
-
-  await store.updateProject({ title: "Local Override" });
-  assert.equal(store.getPublicState().project.title, "Local Override");
-  await store.updateSettings({ studioName: "Local Studio", currency: "GBP" });
-  assert.equal(store.getPublicState().settings.studioName, "Local Studio");
-  assert.equal(store.getPublicState().settings.currency, "GBP");
-  await store.updateCallsheet({ status: "Published", crewCall: "05:45" });
-  assert.equal(store.getPublicState().callsheet.status, "Published");
-  assert.equal(store.getPublicState().callsheet.crewCall, "05:45");
-
-  await store.reset();
-  assert.equal(store.getPublicState().project.title, "Seed Project");
-  assert.equal(store.getPublicState().settings.currency, "EUR");
-  assert.equal(store.getPublicState().callsheet.status, "Draft");
-});
-test("sanitizeCollectionItem normalizes lists and numbers", () => {
-  const schedule = sanitizeCollectionItem("schedule", {
-    day: "Day 1",
-    date: "2026-06-01",
-    location: "Stage",
-    callTime: "07:00",
-    notes: "test",
-    scenes: "1A, 1B , 2",
-    status: "ready",
-  }, "schedule-1");
-
-  assert.deepEqual(schedule.scenes, ["1A", "1B", "2"]);
-
-  const budget = sanitizeCollectionItem("budget", {
-    category: "Props",
-    estimated: "1200",
-    actual: "980",
-  }, "budget-1");
-
-  assert.equal(budget.estimated, 1200);
-  assert.equal(budget.actual, 980);
-});
-
-test("dashboard metrics are derived from current state", () => {
-  const dashboard = buildDashboard({
-    callsheet: { status: "In review" },
-    scenes: [{ id: "1" }, { id: "2" }],
-    schedule: [{ id: "a" }],
-    tasks: [
-      { id: "t1", priority: "high", status: "Not Started" },
-      { id: "t2", priority: "low", status: "Done" },
-    ],
-    budget: [{ estimated: 10, actual: 15 }],
-    assets: [{ id: "asset-1", status: "In review" }],
+  return createStore({
+    seedFile,
+    dataFile,
+    uploadsDir,
+    bootstrapAdminEmails: options.bootstrapAdminEmails || [],
   });
+}
 
-  assert.equal(dashboard.stats[0].value, 2);
-  assert.equal(dashboard.stats[1].value, 1);
-  assert.equal(dashboard.stats[2].value, 1);
-  assert.equal(dashboard.stats[3].value, 2);
-  assert.equal(dashboard.priorityTasks.length, 1);
-});
-
-test("user permissions support viewers and full-access producers", () => {
-  const viewer = sanitizeUser(
-    { name: "Viewer", email: "viewer@test.com", role: "Viewer", access: normalizeAccess("Viewer") },
-    "user-1"
+test("password login succeeds for seeded producer", async () => {
+  const store = createTempStore();
+  const session = await store.loginWithPassword(
+    { email: "producer@frameforge.app", password: "demo123" },
+    "test-secret"
   );
-  const producer = sanitizeUser(
-    { name: "Producer", email: "producer@test.com", role: "Producer", access: normalizeAccess("Producer") },
-    "user-2"
+  assert.ok(session.token);
+  assert.equal(session.user.email, "producer@frameforge.app");
+});
+
+test("bootstrap admin Google login auto-creates invited admin", async () => {
+  const store = createTempStore({ bootstrapAdminEmails: ["owner@example.com"] });
+  const session = await store.loginWithGoogle(
+    { email: "owner@example.com", name: "Owner" },
+    "test-secret",
+    ""
   );
-
-  assert.equal(canViewModule(viewer, "budget"), false);
-  assert.equal(canViewModule(viewer, "settings"), false);
-  assert.equal(canEditModule(viewer, "budget"), false);
-  assert.equal(canEditModule(viewer, "team"), false);
-  assert.equal(canViewModule(viewer, "contacts"), false);
-  assert.equal(canViewModule(viewer, "schedule"), true);
-  assert.equal(canEditModule(producer, "budget"), true);
-  assert.equal(canEditModule(producer, "settings"), true);
-  assert.equal(canEditModule(producer, "team"), true);
+  assert.equal(session.user.email, "owner@example.com");
+  assert.equal(store.getState().users.length, 2);
 });
 
-test("normalizeAccess supports no-access states", () => {
-  const access = normalizeAccess("Crew", { budget: "none", assets: "view", tasks: "edit" });
-  assert.equal(access.budget, "none");
-  assert.equal(access.assets, "view");
-  assert.equal(access.tasks, "edit");
-});
-
-test("normalizeEmailList parses comma separated bootstrap emails", () => {
-  assert.deepEqual(normalizeEmailList(" owner@example.com,BOJAN.DOVRTEL@GMAIL.COM "), [
-    "owner@example.com",
-    "bojan.dovrtel@gmail.com",
-  ]);
+test("callsheet stores and resolves forecast by shoot date", async () => {
+  const store = createTempStore();
+  const created = await store.createCallsheet({
+    title: "Shoot Day 1",
+    shootDate: "2026-05-12",
+    location: "Ljubljana, Slovenia",
+  });
+  const forecast = store.getForecastForDate(created.shootDate);
+  assert.equal(created.title, "Shoot Day 1");
+  assert.equal(forecast.summary, "Clear");
 });

@@ -1,0 +1,17 @@
+import { DashboardShell } from "../../components/dashboard-shell";
+
+const navItems = [
+  { href: "/admin/providers", label: "Providers" },
+  { href: "/admin/claims", label: "Claim requests" },
+  { href: "/admin/verification", label: "Verification" },
+  { href: "/admin/offers", label: "Offer moderation" },
+  { href: "/admin/categories", label: "Categories" },
+];
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <DashboardShell title="Admin Dashboard" eyebrow="Moderation workspace" navItems={navItems}>
+      {children}
+    </DashboardShell>
+  );
+}
