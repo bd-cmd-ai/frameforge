@@ -271,6 +271,8 @@ function renderOverview() {
   const { project, dashboard, schedule, tasks, assets } = state.data;
   const totalBudget = sum(state.data.budget, "estimated");
   const totalActual = sum(state.data.budget, "actual");
+  const resolvedLocation = project.locationLabel || project.location || "Location not set";
+  const liveWeather = project.weather || "Weather sync pending";
 
   return `
     <section class="content">
@@ -287,7 +289,7 @@ function renderOverview() {
         <article class="hero-side panel">
           <div class="section-copy">
             <h3>Today at a glance</h3>
-            <p>${escapeHtml(project.location)} · ${escapeHtml(project.weather)}</p>
+            <p>${escapeHtml(resolvedLocation)} · ${escapeHtml(liveWeather)}</p>
           </div>
           <div class="mini-list" style="margin-top: 18px;">
             <div class="mini-item"><strong>${schedule[0] ? escapeHtml(schedule[0].day) : "TBD"}</strong><span>Current production day</span></div>
@@ -378,6 +380,7 @@ function renderOverview() {
 function renderProjectView() {
   const project = state.data.project;
   const canEdit = canEditModule("project");
+  const resolvedLocation = project.locationLabel || project.location || "Location not set";
   return `
     <section class="content">
       <section class="grid-two">
@@ -394,14 +397,27 @@ function renderProjectView() {
                   <input class="input full" name="title" placeholder="Project title" value="${escapeAttribute(project.title)}" required />
                   <input class="input full" name="tagline" placeholder="Tagline" value="${escapeAttribute(project.tagline)}" required />
                   <input class="input" name="status" placeholder="Status" value="${escapeAttribute(project.status)}" required />
-                  <input class="input" name="location" placeholder="Primary location" value="${escapeAttribute(project.location)}" required />
+                  <input class="input" name="location" placeholder="Primary location or basecamp address" value="${escapeAttribute(project.location)}" required />
                   <input class="input" name="startDate" type="date" value="${escapeAttribute(project.startDate)}" required />
                   <input class="input" name="wrapDate" type="date" value="${escapeAttribute(project.wrapDate)}" required />
                   <input class="input" name="director" placeholder="Director" value="${escapeAttribute(project.director)}" required />
                   <input class="input" name="producer" placeholder="Producer" value="${escapeAttribute(project.producer)}" required />
-                  <input class="input full" name="weather" placeholder="Weather note" value="${escapeAttribute(project.weather)}" required />
+                  <select class="select" name="currency">
+                    ${["EUR", "USD", "GBP"]
+                      .map((currency) => `<option value="${currency}" ${currency === (project.currency || "EUR") ? "selected" : ""}>${currency}</option>`)
+                      .join("")}
+                  </select>
+                  <div class="callout">
+                    <strong>Live weather</strong>
+                    <p style="margin-top: 10px;">${escapeHtml(project.weather || "Weather sync pending")}</p>
+                    <p style="margin-top: 8px;">${escapeHtml(resolvedLocation)}</p>
+                    <p style="margin-top: 8px;">Updated ${escapeHtml(formatDateTime(project.weatherUpdatedAt))}</p>
+                  </div>
                   <textarea class="textarea full" name="logline" placeholder="Logline">${escapeHtml(project.logline)}</textarea>
-                  <button class="button full" type="submit">Save project</button>
+                  <div class="button-row full">
+                    <button class="button" type="submit">Save project & sync weather</button>
+                    <button class="button-secondary" type="button" data-action="refresh-project-context">Refresh weather</button>
+                  </div>
                 </form>`
               : renderReadOnlyCard("You can view project details, but only users with project edit rights can change them.")
           }
@@ -417,7 +433,9 @@ function renderProjectView() {
             <div class="list-item"><strong>${escapeHtml(project.title)}</strong><span>${escapeHtml(project.status)}</span></div>
             <div class="list-item"><strong>${formatDate(project.startDate)} → ${formatDate(project.wrapDate)}</strong><span>Shooting window</span></div>
             <div class="list-item"><strong>${escapeHtml(project.director)} / ${escapeHtml(project.producer)}</strong><span>Leadership</span></div>
-            <div class="list-item"><strong>${escapeHtml(project.location)}</strong><span>Base of operations</span></div>
+            <div class="list-item"><strong>${escapeHtml(resolvedLocation)}</strong><span>Base of operations</span></div>
+            <div class="list-item"><strong>${escapeHtml(project.weather || "Weather sync pending")}</strong><span>Live weather</span></div>
+            <div class="list-item"><strong>${escapeHtml(project.currency || "EUR")}</strong><span>Budget currency</span></div>
           </div>
         </article>
       </section>
@@ -593,6 +611,7 @@ function renderCallsheetView() {
   const day = state.data.schedule[0];
   const project = state.data.project;
   const leads = state.data.contacts.slice(0, 4);
+  const resolvedLocation = project.locationLabel || project.location || "Basecamp TBD";
 
   return `
     <section class="content">
@@ -601,19 +620,19 @@ function renderCallsheetView() {
           <span class="pill dark">Live from schedule + project data</span>
           <h3>${escapeHtml(day?.day || "No day scheduled")} · ${formatDate(day?.date)}</h3>
           <p>
-            Crew call ${escapeHtml(day?.callTime || "TBD")} at ${escapeHtml(day?.location || project.location)}.
+            Crew call ${escapeHtml(day?.callTime || "TBD")} at ${escapeHtml(day?.location || resolvedLocation)}.
             Weather: ${escapeHtml(project.weather)}. Scenes: ${escapeHtml((day?.scenes || []).join(", ") || "TBD")}.
           </p>
         </article>
         <article class="hero-side panel">
           <div class="section-copy">
             <h3>Emergency & logistics</h3>
-            <p>Static briefing block you can evolve into PDF generation later.</p>
+            <p>Live location-aware context for the active shoot day.</p>
           </div>
           <div class="mini-list" style="margin-top: 18px;">
             <div class="mini-item"><strong>Hospital</strong><span>University Medical Centre Ljubljana · +386 1 522 5050</span></div>
-            <div class="mini-item"><strong>Sunrise / Sunset</strong><span>05:18 / 20:42</span></div>
-            <div class="mini-item"><strong>Basecamp</strong><span>${escapeHtml(project.location)}</span></div>
+            <div class="mini-item"><strong>Sunrise / Sunset</strong><span>${escapeHtml(formatTime(project.sunrise))} / ${escapeHtml(formatTime(project.sunset))}</span></div>
+            <div class="mini-item"><strong>Basecamp</strong><span>${escapeHtml(resolvedLocation)}</span></div>
           </div>
         </article>
       </div>
@@ -1168,6 +1187,15 @@ async function handleClick(event) {
     return;
   }
 
+  if (action === "refresh-project-context") {
+    await mutate(async () => {
+      const response = await api("/project/refresh-context", { method: "POST" });
+      state.data.project = response.project;
+      state.flash = "Weather and location context refreshed.";
+    });
+    return;
+  }
+
   if (action === "export") {
     exportData();
     return;
@@ -1555,11 +1583,24 @@ function formatDate(value) {
 }
 
 function money(value) {
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat(currencyLocale(), {
     style: "currency",
-    currency: "USD",
+    currency: activeCurrency(),
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
+}
+
+function activeCurrency() {
+  return state.data?.project?.currency || "EUR";
+}
+
+function currencyLocale() {
+  const map = {
+    EUR: "sl-SI",
+    USD: "en-US",
+    GBP: "en-GB",
+  };
+  return map[activeCurrency()] || "sl-SI";
 }
 
 function formatMetricValue(value) {
@@ -1570,6 +1611,27 @@ function formatMetricValue(value) {
 function formatCurrencyDelta(value) {
   const sign = value > 0 ? "+" : "";
   return `${sign}${money(value)}`;
+}
+
+function formatDateTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "not synced yet";
+  return date.toLocaleString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "TBD";
+  return date.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function humanizeStatus(status) {

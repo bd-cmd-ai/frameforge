@@ -105,8 +105,16 @@ const DEFAULT_DB = {
     wrapDate: "2026-07-02",
     director: "Nadia Verhoeven",
     producer: "Miles Ortega",
-    weather: "8°C / light wind / overcast",
     location: "Ljubljana Unit + Nordic exteriors",
+    locationLabel: "Ljubljana Unit + Nordic exteriors",
+    latitude: 0,
+    longitude: 0,
+    timezone: "Europe/Ljubljana",
+    weather: "Weather sync pending",
+    weatherUpdatedAt: "",
+    sunrise: "",
+    sunset: "",
+    currency: "EUR",
     logline: "An Arctic investigator hunts a buried conspiracy before the midnight sun reveals the wrong truth.",
   },
   schedule: [
@@ -555,6 +563,14 @@ function sanitizeProject(payload) {
     producer: stringValue(payload.producer),
     weather: stringValue(payload.weather),
     location: stringValue(payload.location),
+    locationLabel: stringValue(payload.locationLabel) || stringValue(payload.location),
+    latitude: numberValue(payload.latitude),
+    longitude: numberValue(payload.longitude),
+    timezone: stringValue(payload.timezone),
+    weatherUpdatedAt: stringValue(payload.weatherUpdatedAt),
+    sunrise: stringValue(payload.sunrise),
+    sunset: stringValue(payload.sunset),
+    currency: normalizeCurrency(payload.currency),
     logline: stringValue(payload.logline),
   };
 }
@@ -647,6 +663,11 @@ function stringValue(value) {
 function numberValue(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function normalizeCurrency(value) {
+  const normalized = String(value || "").trim().toUpperCase();
+  return ["EUR", "USD", "GBP"].includes(normalized) ? normalized : "EUR";
 }
 
 function normalizeList(value) {
@@ -820,7 +841,17 @@ function createApp(options = {}) {
         return sendJson(response, 403, { error: "You do not have permission to edit the project." });
       }
       const body = await readJsonBody(request);
-      const project = await store.updateProject(body);
+      const currentProject = store.getPublicState().project;
+      const project = await store.updateProject(await deriveProjectContext({ ...currentProject, ...body }));
+      return sendJson(response, 200, { project });
+    }
+
+    if (pathname === "/api/project/refresh-context" && method === "POST") {
+      if (!canEditModule(auth.user, "project")) {
+        return sendJson(response, 403, { error: "You do not have permission to refresh project context." });
+      }
+      const currentProject = store.getPublicState().project;
+      const project = await store.updateProject(await deriveProjectContext(currentProject));
       return sendJson(response, 200, { project });
     }
 
@@ -1029,6 +1060,141 @@ function normalizeEmailList(value) {
     .split(",")
     .map((item) => item.trim().toLowerCase())
     .filter(Boolean);
+}
+
+async function deriveProjectContext(project) {
+  const locationQuery = stringValue(project.location);
+  if (!locationQuery) {
+    return {
+      ...project,
+      locationLabel: "",
+      latitude: 0,
+      longitude: 0,
+      timezone: "",
+      weather: "",
+      weatherUpdatedAt: "",
+      sunrise: "",
+      sunset: "",
+    };
+  }
+
+  const geo = await geocodeLocation(locationQuery);
+  if (!geo) {
+    throw new Error(`Unable to resolve the project location "${locationQuery}".`);
+  }
+
+  const forecast = await fetchWeatherContext(geo.latitude, geo.longitude, geo.timezone);
+
+  return {
+    ...project,
+    locationLabel: formatResolvedLocation(geo),
+    latitude: geo.latitude,
+    longitude: geo.longitude,
+    timezone: geo.timezone || stringValue(project.timezone),
+    weather: formatWeatherSummary(forecast.current),
+    weatherUpdatedAt: forecast.current?.time || "",
+    sunrise: forecast.daily?.sunrise?.[0] || "",
+    sunset: forecast.daily?.sunset?.[0] || "",
+  };
+}
+
+async function geocodeLocation(query) {
+  const url = new URL("https://geocoding-api.open-meteo.com/v1/search");
+  url.searchParams.set("name", query);
+  url.searchParams.set("count", "1");
+  url.searchParams.set("language", "en");
+  url.searchParams.set("format", "json");
+
+  const response = await fetch(url, {
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Geocoding failed with status ${response.status}.`);
+  }
+
+  const payload = await response.json();
+  return payload.results?.[0] || null;
+}
+
+async function fetchWeatherContext(latitude, longitude, timezone) {
+  const url = new URL("https://api.open-meteo.com/v1/forecast");
+  url.searchParams.set("latitude", String(latitude));
+  url.searchParams.set("longitude", String(longitude));
+  url.searchParams.set("timezone", timezone || "auto");
+  url.searchParams.set("current", "temperature_2m,apparent_temperature,weather_code,wind_speed_10m");
+  url.searchParams.set("daily", "sunrise,sunset");
+  url.searchParams.set("forecast_days", "1");
+  url.searchParams.set("temperature_unit", "celsius");
+  url.searchParams.set("wind_speed_unit", "kmh");
+
+  const response = await fetch(url, {
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Weather forecast failed with status ${response.status}.`);
+  }
+
+  return response.json();
+}
+
+function formatResolvedLocation(geo) {
+  return [geo.name, geo.admin1, geo.country].filter(Boolean).join(", ");
+}
+
+function formatWeatherSummary(current) {
+  if (!current) {
+    return "Weather unavailable";
+  }
+
+  const temperature = Number.isFinite(Number(current.temperature_2m))
+    ? `${Math.round(Number(current.temperature_2m))}°C`
+    : "—";
+  const condition = weatherCodeLabel(current.weather_code);
+  const wind = Number.isFinite(Number(current.wind_speed_10m))
+    ? `wind ${Math.round(Number(current.wind_speed_10m))} km/h`
+    : "";
+
+  return [temperature, condition, wind].filter(Boolean).join(" · ");
+}
+
+function weatherCodeLabel(code) {
+  const numericCode = Number(code);
+  const labels = {
+    0: "Clear sky",
+    1: "Mainly clear",
+    2: "Partly cloudy",
+    3: "Overcast",
+    45: "Fog",
+    48: "Rime fog",
+    51: "Light drizzle",
+    53: "Drizzle",
+    55: "Dense drizzle",
+    61: "Light rain",
+    63: "Rain",
+    65: "Heavy rain",
+    66: "Freezing rain",
+    67: "Heavy freezing rain",
+    71: "Light snow",
+    73: "Snow",
+    75: "Heavy snow",
+    77: "Snow grains",
+    80: "Rain showers",
+    81: "Heavy rain showers",
+    82: "Violent rain showers",
+    85: "Snow showers",
+    86: "Heavy snow showers",
+    95: "Thunderstorm",
+    96: "Thunderstorm with hail",
+    99: "Severe thunderstorm with hail",
+  };
+
+  return labels[numericCode] || "Weather update";
 }
 
 module.exports = {
