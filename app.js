@@ -211,8 +211,6 @@ function renderApp() {
             <strong>${escapeHtml(state.user.name)}</strong>
             <div style="color: rgba(255,248,238,0.7); margin-top: 6px;">${escapeHtml(state.user.role)} · ${canEditModule("team") ? "full access" : "limited access"}</div>
           </div>
-          <button class="button-ghost" data-action="export">Export JSON</button>
-          ${canEditModule("team") ? `<button class="button-ghost" data-action="reset">Reset demo data</button>` : ""}
           <button class="button-ghost" data-action="logout">Logout</button>
         </div>
       </aside>
@@ -434,7 +432,7 @@ function renderTeamView() {
 
   return `
     <section class="content">
-      <section class="grid-two">
+      <section class="grid-two team-grid">
         <article class="table-card">
           <div class="section-head">
             <div class="section-copy">
