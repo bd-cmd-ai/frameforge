@@ -310,7 +310,8 @@ a {
 .app-shell {
   display: grid;
   grid-template-columns: 310px minmax(0, 1fr);
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .sidebar {
@@ -318,16 +319,19 @@ a {
   flex-direction: column;
   justify-content: space-between;
   gap: 24px;
-  padding: 24px 20px;
+  height: 100vh;
+  padding: 18px 18px 16px;
   background:
     radial-gradient(circle at top left, rgba(184, 255, 49, 0.14), transparent 28%),
     linear-gradient(180deg, rgba(15, 23, 11, 0.98), rgba(18, 26, 15, 0.96));
   color: #f7ffe8;
+  overflow: hidden;
 }
 
 .sidebar-header {
   display: grid;
-  gap: 18px;
+  gap: 12px;
+  min-height: 0;
 }
 
 .project-card,
@@ -354,7 +358,7 @@ a {
 }
 
 .project-card {
-  padding: 22px;
+  padding: 18px;
   background:
     radial-gradient(circle at top right, rgba(184, 255, 49, 0.16), transparent 36%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent),
@@ -370,26 +374,27 @@ a {
 }
 
 .project-card h1 {
-  margin-top: 12px;
+  margin-top: 10px;
   font-family: "Space Grotesk", sans-serif;
-  font-size: 1.7rem;
+  font-size: 1.45rem;
 }
 
 .project-card p {
-  margin-top: 12px;
+  margin-top: 10px;
   color: var(--sidebar-muted);
-  line-height: 1.55;
+  line-height: 1.45;
+  font-size: 0.95rem;
 }
 
 .project-meta {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 18px;
+  gap: 8px;
+  margin-top: 14px;
 }
 
 .meta-block {
-  padding: 12px;
+  padding: 10px;
   border-radius: 14px;
   background: rgba(238, 255, 206, 0.05);
   border: 1px solid rgba(184, 255, 49, 0.08);
@@ -413,7 +418,7 @@ a {
 
 .nav {
   display: grid;
-  gap: 8px;
+  gap: 5px;
 }
 
 .nav-button {
@@ -421,7 +426,7 @@ a {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 14px 16px;
+  padding: 11px 14px;
   border: 0;
   border-radius: 14px;
   background: transparent;
@@ -437,11 +442,14 @@ a {
 
 .sidebar-footer {
   display: grid;
-  gap: 10px;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .main {
-  padding: 22px;
+  height: 100vh;
+  overflow: auto;
+  padding: 18px 20px 22px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 180px),
     transparent;
@@ -451,7 +459,7 @@ a {
   display: flex;
   justify-content: space-between;
   gap: 18px;
-  padding: 6px 2px 24px;
+  padding: 4px 2px 18px;
 }
 
 .topbar h2,
@@ -465,9 +473,9 @@ a {
 }
 
 .topbar h2 {
-  margin-top: 6px;
+  margin-top: 4px;
   font-family: "Space Grotesk", sans-serif;
-  font-size: clamp(2rem, 5vw, 3rem);
+  font-size: clamp(1.9rem, 4vw, 2.75rem);
 }
 
 .topbar .eyebrow,
@@ -494,7 +502,7 @@ a {
 
 .content {
   display: grid;
-  gap: 18px;
+  gap: 14px;
 }
 
 .hero {
@@ -588,6 +596,11 @@ a {
   grid-template-columns: 1.15fr 0.85fr;
 }
 
+.team-grid {
+  grid-template-columns: minmax(0, 1.45fr) minmax(360px, 0.9fr);
+  align-items: start;
+}
+
 .grid-three {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -635,14 +648,14 @@ a {
 .board-card,
 .timeline-card,
 .callout {
-  padding: 22px;
+  padding: 18px;
 }
 
 .section-head {
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .section-copy {
@@ -767,14 +780,14 @@ a {
 
 .table th,
 .table td {
-  padding: 14px 12px;
+  padding: 11px 10px;
   text-align: left;
   border-bottom: 1px solid var(--line);
   vertical-align: top;
 }
 
 .table th {
-  font-size: 0.84rem;
+  font-size: 0.78rem;
   color: var(--muted);
 }
 
@@ -892,6 +905,11 @@ a {
 }
 
 @media (max-width: 860px) {
+  .app-shell {
+    height: auto;
+    overflow: visible;
+  }
+
   .topbar,
   .section-head {
     flex-direction: column;
@@ -916,6 +934,13 @@ a {
   }
 
   .sidebar {
+    height: auto;
+    overflow: visible;
     padding: 18px;
+  }
+
+  .main {
+    height: auto;
+    overflow: visible;
   }
 }
