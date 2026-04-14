@@ -100,7 +100,6 @@ test("store can bootstrap runtime data from a tracked seed file and reset back t
   await store.reset();
   assert.equal(store.getPublicState().project.title, "Seed Project");
 });
-
 test("sanitizeCollectionItem normalizes lists and numbers", () => {
   const schedule = sanitizeCollectionItem("schedule", {
     day: "Day 1",

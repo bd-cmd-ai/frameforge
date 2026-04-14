@@ -55,7 +55,6 @@ The backend verifies the Google ID token and only allows login when the email al
 - `Reset demo data` restores the local runtime file from the tracked seed file
 
 This keeps the GitHub repo safe to publish while still letting your local app hold real working data.
-
 ## GitHub Ready
 
 I also prepared the project for a GitHub-hosted workflow:

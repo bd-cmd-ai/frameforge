@@ -329,7 +329,6 @@ function createStore(options = {}) {
 
     return structuredClone(defaultData);
   }
-
   function getPublicState() {
     const state = getState();
     return {
