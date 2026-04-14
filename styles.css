@@ -601,6 +601,11 @@ a {
   align-items: start;
 }
 
+.asset-grid {
+  grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.9fr);
+  align-items: start;
+}
+
 .grid-three {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -743,6 +748,11 @@ a {
   gap: 8px;
 }
 
+.selected-record {
+  border-color: rgba(149, 221, 24, 0.32);
+  box-shadow: 0 0 0 3px rgba(184, 255, 49, 0.1);
+}
+
 .record-footer,
 .card-footer {
   display: flex;
@@ -833,6 +843,34 @@ a {
 
 .callout {
   background: linear-gradient(180deg, rgba(249, 252, 239, 0.94), rgba(229, 238, 201, 0.92));
+}
+
+.upload-field {
+  display: grid;
+  gap: 10px;
+}
+
+.upload-field span {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.asset-preview-frame,
+.asset-preview-image {
+  width: 100%;
+  min-height: 480px;
+  border: 1px solid rgba(31, 39, 18, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.asset-preview-frame {
+  height: 62vh;
+}
+
+.asset-preview-image {
+  object-fit: contain;
+  padding: 12px;
 }
 
 .empty,

@@ -46,6 +46,7 @@ const state = {
   loading: true,
   flash: "",
   error: "",
+  assetPreviewId: "",
   editing: {
     project: false,
     users: null,
@@ -93,6 +94,7 @@ async function refreshData() {
   const bootstrap = await api("/bootstrap");
   state.user = bootstrap.user;
   state.data = bootstrap;
+  state.assetPreviewId = bootstrap.assets?.[0]?.id || "";
   if (!canViewModule(state.currentView)) {
     state.currentView = firstVisibleView();
   }
@@ -887,15 +889,16 @@ function renderAssetsView() {
   const items = filterItems(state.data.assets, ["name", "type", "owner", "updated", "tag"]);
   const editing = getEditingRecord("assets");
   const canEdit = canEditModule("assets");
+  const previewAsset = items.find((item) => item.id === state.assetPreviewId) || items[0] || null;
 
   return `
     <section class="content">
-      <section class="grid-two">
+      <section class="grid-two asset-grid">
         <article class="table-card">
           <div class="section-head">
             <div class="section-copy">
               <h3>Assets & production docs</h3>
-              <p>Track scripts, safety docs, boards, and deliverables.</p>
+              <p>Upload, preview, and organize scripts, PDFs, images, safety docs, and deliverables.</p>
             </div>
             <span class="pill">${items.length} assets</span>
           </div>
@@ -903,25 +906,30 @@ function renderAssetsView() {
             ${items.length ? items.map(renderAssetRecord).join("") : `<div class="empty">No assets match your search.</div>`}
           </div>
         </article>
-        <article class="panel">
-          <div class="section-head">
-            <div class="section-copy">
-              <h3>${editing ? "Edit asset" : "Add asset"}</h3>
-              <p>Keep the latest revision in the shared library.</p>
+        <div class="stack">
+          <article class="panel">
+            <div class="section-head">
+              <div class="section-copy">
+                <h3>${previewAsset ? "Preview" : "Preview unavailable"}</h3>
+                <p>${previewAsset ? "Read documents directly in the app." : "Select or upload an asset to preview it here."}</p>
+              </div>
             </div>
-          </div>
-          ${
-            canEdit
-              ? renderCollectionForm("assets", editing, [
-                  field("name", "text", "Asset title", true),
-                  field("type", "text", "PDF / PNG / DOC"),
-                  field("owner", "text", "Owner"),
-                  field("updated", "date"),
-                  field("tag", "text", "Tag"),
-                ])
-              : renderReadOnlyCard("Assets are view-only for your account.")
-          }
-        </article>
+            ${renderAssetPreview(previewAsset)}
+          </article>
+          <article class="panel">
+            <div class="section-head">
+              <div class="section-copy">
+                <h3>${editing ? "Edit asset" : "Add asset"}</h3>
+                <p>Attach the latest revision and keep it in the shared library.</p>
+              </div>
+            </div>
+            ${
+              canEdit
+                ? renderAssetForm(editing)
+                : renderReadOnlyCard("Assets are view-only for your account.")
+            }
+          </article>
+        </div>
       </section>
     </section>
   `;
@@ -1016,14 +1024,79 @@ function renderAssetCard(item) {
 
 function renderAssetRecord(item) {
   return `
-    <article class="record">
+    <article class="record ${state.assetPreviewId === item.id ? "selected-record" : ""}">
       <strong>${escapeHtml(item.name)}</strong>
       <span>${escapeHtml(item.type)} · ${escapeHtml(item.owner)} · ${formatDate(item.updated)}</span>
+      <div class="muted">${escapeHtml(item.fileName || "Metadata only")} ${item.sizeBytes ? `· ${formatFileSize(item.sizeBytes)}` : ""}</div>
       <div class="card-footer">
         <span class="pill">${escapeHtml(item.tag)}</span>
-        <div class="inline-actions">${canEditModule("assets") ? renderIconActions("assets", item.id) : ""}</div>
+        <div class="inline-actions">
+          <button class="action-link" type="button" data-preview-asset="${item.id}">Preview</button>
+          ${item.fileUrl ? `<a class="action-link" href="${escapeAttribute(item.fileUrl)}" target="_blank" rel="noreferrer">Open</a>` : ""}
+          ${canEditModule("assets") ? renderIconActions("assets", item.id) : ""}
+        </div>
       </div>
     </article>
+  `;
+}
+
+function renderAssetForm(editing) {
+  return `
+    <form class="form-grid two" data-collection-form="assets">
+      <input type="hidden" name="id" value="${escapeAttribute(editing?.id || "")}" />
+      <input class="input full" name="name" type="text" placeholder="Asset title" value="${escapeAttribute(editing?.name || "")}" required />
+      <select class="select" name="type">
+        ${["PDF", "Image", "Doc", "Spreadsheet", "Link", "Other"]
+          .map((type) => `<option value="${type}" ${type === (editing?.type || "PDF") ? "selected" : ""}>${type}</option>`)
+          .join("")}
+      </select>
+      <input class="input" name="owner" type="text" placeholder="Owner" value="${escapeAttribute(editing?.owner || "")}" />
+      <input class="input" name="updated" type="date" value="${escapeAttribute(editing?.updated || "")}" />
+      <input class="input" name="tag" type="text" placeholder="Tag" value="${escapeAttribute(editing?.tag || "")}" />
+      <label class="upload-field full">
+        <span>Document upload</span>
+        <input class="input" name="file" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.txt" />
+      </label>
+      <div class="button-row full">
+        <button class="button" type="submit">${editing ? "Save asset" : "Upload asset"}</button>
+        ${
+          editing
+            ? `<button class="button-secondary" type="button" data-action="cancel-edit" data-collection="assets">Cancel</button>`
+            : ""
+        }
+      </div>
+    </form>
+  `;
+}
+
+function renderAssetPreview(asset) {
+  if (!asset) {
+    return `<div class="empty">No document selected.</div>`;
+  }
+
+  if (!asset.fileUrl) {
+    return `
+      <div class="empty">
+        <strong>${escapeHtml(asset.name)}</strong>
+        <div style="margin-top: 10px;">This asset currently stores metadata only. Upload a file to preview it here.</div>
+      </div>
+    `;
+  }
+
+  if (asset.mimeType === "application/pdf" || asset.fileUrl.toLowerCase().endsWith(".pdf")) {
+    return `<iframe class="asset-preview-frame" src="${escapeAttribute(asset.fileUrl)}" title="${escapeAttribute(asset.name)}"></iframe>`;
+  }
+
+  if (String(asset.mimeType).startsWith("image/")) {
+    return `<img class="asset-preview-image" src="${escapeAttribute(asset.fileUrl)}" alt="${escapeAttribute(asset.name)}" />`;
+  }
+
+  return `
+    <div class="empty">
+      <strong>${escapeHtml(asset.name)}</strong>
+      <div style="margin-top: 10px;">Preview is not supported for this file type yet.</div>
+      <div style="margin-top: 10px;"><a href="${escapeAttribute(asset.fileUrl)}" target="_blank" rel="noreferrer">Open document in new tab</a></div>
+    </div>
   `;
 }
 
@@ -1162,13 +1235,21 @@ function handleInput(event) {
 }
 
 async function handleClick(event) {
-  const trigger = event.target.closest("[data-action], [data-nav]");
+  const trigger = event.target.closest("[data-action], [data-nav], [data-preview-asset]");
   if (!trigger) {
     return;
   }
 
   if (trigger.dataset.nav) {
     state.currentView = trigger.dataset.nav;
+    state.flash = "";
+    state.error = "";
+    render();
+    return;
+  }
+
+  if (trigger.dataset.previewAsset) {
+    state.assetPreviewId = trigger.dataset.previewAsset;
     state.flash = "";
     state.error = "";
     render();
@@ -1237,6 +1318,9 @@ async function handleClick(event) {
       state.data[collection] = state.data[collection].filter((item) => item.id !== id);
       state.data.dashboard = computeDashboard(state.data);
       state.editing[collection] = null;
+      if (collection === "assets" && state.assetPreviewId === id) {
+        state.assetPreviewId = state.data.assets[0]?.id || "";
+      }
       state.flash = `${capitalize(collectionLabels[collection])} deleted.`;
     });
   }
@@ -1306,7 +1390,9 @@ async function handleSubmit(event) {
   event.preventDefault();
   const formData = new FormData(form);
   const id = String(formData.get("id") || "").trim();
-  const payload = prepareCollectionPayload(collection, formData);
+  const payload = collection === "assets"
+    ? await prepareAssetPayload(formData)
+    : prepareCollectionPayload(collection, formData);
 
   await mutate(async () => {
     if (id) {
@@ -1327,6 +1413,9 @@ async function handleSubmit(event) {
 
     state.data.dashboard = computeDashboard(state.data);
     state.editing[collection] = null;
+    if (collection === "assets") {
+      state.assetPreviewId = state.data.assets[0]?.id || "";
+    }
   });
 }
 
@@ -1466,6 +1555,30 @@ function prepareCollectionPayload(collection, formData) {
   }
 
   return entries;
+}
+
+async function prepareAssetPayload(formData) {
+  const payload = Object.fromEntries(formData.entries());
+  delete payload.id;
+  const file = formData.get("file");
+  delete payload.file;
+
+  if (file && typeof file === "object" && file.size) {
+    payload.fileName = file.name;
+    payload.mimeType = file.type || mimeTypeFromFileName(file.name);
+    payload.sizeBytes = file.size;
+    payload.fileContentBase64 = await readFileAsBase64(file);
+
+    if (!payload.name) {
+      payload.name = file.name.replace(/\.[^.]+$/, "");
+    }
+
+    if (!payload.type) {
+      payload.type = inferAssetType(payload.mimeType, file.name);
+    }
+  }
+
+  return payload;
 }
 
 function prepareUserPayload(formData) {
@@ -1631,6 +1744,50 @@ function formatTime(value) {
   return date.toLocaleTimeString("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
+  });
+}
+
+function formatFileSize(bytes) {
+  const size = Number(bytes || 0);
+  if (!size) return "";
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function mimeTypeFromFileName(fileName) {
+  const extension = String(fileName || "").split(".").pop()?.toLowerCase();
+  const map = {
+    pdf: "application/pdf",
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    webp: "image/webp",
+    gif: "image/gif",
+    txt: "text/plain",
+  };
+  return map[extension] || "application/octet-stream";
+}
+
+function inferAssetType(mimeType, fileName) {
+  if (mimeType === "application/pdf") return "PDF";
+  if (String(mimeType).startsWith("image/")) return "Image";
+  if (mimeType === "text/plain") return "Doc";
+  const extension = String(fileName || "").split(".").pop()?.toLowerCase();
+  if (["doc", "docx", "txt"].includes(extension)) return "Doc";
+  if (["xls", "xlsx", "csv"].includes(extension)) return "Spreadsheet";
+  return "Other";
+}
+
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      resolve(result.includes(",") ? result.split(",")[1] : result);
+    };
+    reader.onerror = () => reject(new Error("Unable to read the selected file."));
+    reader.readAsDataURL(file);
   });
 }
 

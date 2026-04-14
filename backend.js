@@ -9,9 +9,13 @@ const STATIC_MIME_TYPES = {
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".png": "image/png",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
   ".svg": "image/svg+xml",
+  ".pdf": "application/pdf",
+  ".txt": "text/plain; charset=utf-8",
 };
 
 const GOOGLE_ISSUERS = new Set(["accounts.google.com", "https://accounts.google.com"]);
@@ -249,6 +253,10 @@ const DEFAULT_DB = {
       owner: "Lighting",
       updated: "2026-05-25",
       tag: "Tech scout",
+      fileName: "",
+      fileUrl: "",
+      mimeType: "",
+      sizeBytes: 0,
     },
     {
       id: "asset-2",
@@ -257,6 +265,10 @@ const DEFAULT_DB = {
       owner: "Production",
       updated: "2026-05-24",
       tag: "Safety",
+      fileName: "",
+      fileUrl: "",
+      mimeType: "",
+      sizeBytes: 0,
     },
     {
       id: "asset-3",
@@ -265,6 +277,10 @@ const DEFAULT_DB = {
       owner: "Direction",
       updated: "2026-05-26",
       tag: "Creative",
+      fileName: "",
+      fileUrl: "",
+      mimeType: "",
+      sizeBytes: 0,
     },
   ],
 };
@@ -650,6 +666,10 @@ function sanitizeCollectionItem(collection, payload, id) {
         owner: stringValue(payload.owner),
         updated: stringValue(payload.updated),
         tag: stringValue(payload.tag),
+        fileName: stringValue(payload.fileName),
+        fileUrl: stringValue(payload.fileUrl),
+        mimeType: stringValue(payload.mimeType),
+        sizeBytes: numberValue(payload.sizeBytes),
       };
     default:
       throw new Error(`Unknown collection ${collection}`);
@@ -936,7 +956,8 @@ function createApp(options = {}) {
         return sendJson(response, 403, { error: "You do not have permission to edit this module." });
       }
       const body = await readJsonBody(request);
-      const item = await store.createItem(collection, body);
+      const payload = collection === "assets" ? await persistAssetUpload(rootDir, body) : body;
+      const item = await store.createItem(collection, payload);
       return sendJson(response, 201, { item });
     }
 
@@ -945,7 +966,11 @@ function createApp(options = {}) {
         return sendJson(response, 403, { error: "You do not have permission to edit this module." });
       }
       const body = await readJsonBody(request);
-      const item = await store.updateItem(collection, id, body);
+      const existing = collection === "assets"
+        ? store.getPublicState()[collection].find((entry) => entry.id === id) || null
+        : null;
+      const payload = collection === "assets" ? await persistAssetUpload(rootDir, body, id, existing) : body;
+      const item = await store.updateItem(collection, id, payload);
       if (!item) {
         return sendJson(response, 404, { error: "Record not found" });
       }
@@ -1195,6 +1220,72 @@ function weatherCodeLabel(code) {
   };
 
   return labels[numericCode] || "Weather update";
+}
+
+async function persistAssetUpload(rootDir, payload, assetId = createId("asset"), existing = null) {
+  const nextPayload = { ...payload };
+  const fileContentBase64 = stringValue(payload.fileContentBase64);
+  const fileName = stringValue(payload.fileName);
+  const mimeType = stringValue(payload.mimeType);
+
+  if (!fileContentBase64 || !fileName) {
+    return {
+      ...nextPayload,
+      fileName: fileName || existing?.fileName || "",
+      fileUrl: stringValue(payload.fileUrl) || existing?.fileUrl || "",
+      mimeType: mimeType || existing?.mimeType || "",
+      sizeBytes: numberValue(payload.sizeBytes) || existing?.sizeBytes || 0,
+    };
+  }
+
+  const uploadsDir = path.join(rootDir, "uploads", "assets");
+  await fs.mkdir(uploadsDir, { recursive: true });
+
+  const extension = sanitizeFileExtension(fileName, mimeType);
+  const safeBaseName = slugify(path.basename(fileName, path.extname(fileName)) || nextPayload.name || assetId);
+  const storedFileName = `${assetId}-${safeBaseName}${extension}`;
+  const absolutePath = path.join(uploadsDir, storedFileName);
+  const fileBuffer = Buffer.from(fileContentBase64, "base64");
+
+  await fs.writeFile(absolutePath, fileBuffer);
+
+  return {
+    ...nextPayload,
+    fileName,
+    fileUrl: `/uploads/assets/${storedFileName}`,
+    mimeType: mimeType || mimeFromExtension(extension),
+    sizeBytes: fileBuffer.byteLength,
+    updated: stringValue(nextPayload.updated) || new Date().toISOString().slice(0, 10),
+  };
+}
+
+function sanitizeFileExtension(fileName, mimeType) {
+  const fromName = path.extname(fileName || "").toLowerCase();
+  if (fromName) {
+    return fromName;
+  }
+
+  const mimeMap = {
+    "application/pdf": ".pdf",
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+    "text/plain": ".txt",
+  };
+
+  return mimeMap[mimeType] || "";
+}
+
+function mimeFromExtension(extension) {
+  return STATIC_MIME_TYPES[extension] || "application/octet-stream";
+}
+
+function slugify(value) {
+  return String(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 module.exports = {
