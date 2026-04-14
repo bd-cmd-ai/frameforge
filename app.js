@@ -816,6 +816,10 @@ function renderCallsheetView() {
             <div class="list-item"><strong>Scenes on day</strong><span>${escapeHtml(sheet.sceneCodes.join(", ") || "None")}</span></div>
             <div class="list-item"><strong>Attached assets</strong><span>${sheet.attachments.length} linked documents</span></div>
             <div class="list-item"><strong>Emergency details</strong><span>${escapeHtml(sheet.hospitalName)} · ${escapeHtml(sheet.hospitalPhone)}</span></div>
+            <div class="list-item"><strong>Last edited</strong><span>${escapeHtml(sheet.lastEditedBy || "—")} · ${escapeHtml(formatDateTime(sheet.lastEditedAt))}</span></div>
+            <div class="list-item"><strong>Approved</strong><span>${escapeHtml(sheet.approvedBy || "Pending")} ${sheet.approvedAt ? `· ${escapeHtml(formatDateTime(sheet.approvedAt))}` : ""}</span></div>
+            <div class="list-item"><strong>Published</strong><span>${sheet.publishedAt ? escapeHtml(formatDateTime(sheet.publishedAt)) : "Not published yet"}</span></div>
+            <div class="list-item"><strong>Approval notes</strong><span>${escapeHtml(sheet.approvalNotes || "No approval notes yet.")}</span></div>
             <div class="list-item"><strong>Footer note</strong><span>${escapeHtml(sheet.footer)}</span></div>
           </div>
         </section>
@@ -1041,7 +1045,7 @@ function renderBudgetView() {
 }
 
 function renderAssetsView() {
-  const items = filterItems(state.data.assets, ["name", "type", "owner", "updated", "tag"]);
+  const items = filterItems(state.data.assets, ["name", "type", "owner", "updated", "tag", "status", "version", "approvalNotes"]);
   const editing = getEditingRecord("assets");
   const canEdit = canEditModule("assets");
   const previewAsset = items.find((item) => item.id === state.assetPreviewId) || items[0] || null;
@@ -1174,7 +1178,7 @@ function renderTaskRecord(item) {
 }
 
 function renderAssetCard(item) {
-  return `<div class="list-item"><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.tag)} · ${formatDate(item.updated)}</span></div>`;
+  return `<div class="list-item"><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.tag)} · ${escapeHtml(item.status || "Draft")} · ${formatDate(item.updated)}</span></div>`;
 }
 
 function renderAssetRecord(item) {
@@ -1184,7 +1188,11 @@ function renderAssetRecord(item) {
       <span>${escapeHtml(item.type)} · ${escapeHtml(item.owner)} · ${formatDate(item.updated)}</span>
       <div class="muted">${escapeHtml(item.fileName || "Metadata only")} ${item.sizeBytes ? `· ${formatFileSize(item.sizeBytes)}` : ""}</div>
       <div class="card-footer">
-        <span class="pill">${escapeHtml(item.tag)}</span>
+        <div class="legend">
+          <span class="pill">${escapeHtml(item.tag)}</span>
+          <span class="${workflowStatusClass(item.status)}">${escapeHtml(item.status || "Draft")}</span>
+          <span class="pill">v${escapeHtml(item.version || "1")}</span>
+        </div>
         <div class="inline-actions">
           <button class="action-link" type="button" data-preview-asset="${item.id}">Preview</button>
           ${item.fileUrl ? `<a class="action-link" href="${escapeAttribute(item.fileUrl)}" target="_blank" rel="noreferrer">Open</a>` : ""}
@@ -1208,6 +1216,13 @@ function renderAssetForm(editing) {
       <input class="input" name="owner" type="text" placeholder="Owner" value="${escapeAttribute(editing?.owner || "")}" />
       <input class="input" name="updated" type="date" value="${escapeAttribute(editing?.updated || "")}" />
       <input class="input" name="tag" type="text" placeholder="Tag" value="${escapeAttribute(editing?.tag || "")}" />
+      <select class="select" name="status">
+        ${["Draft", "In review", "Approved", "Archived"]
+          .map((status) => `<option value="${status}" ${status === (editing?.status || "Draft") ? "selected" : ""}>${status}</option>`)
+          .join("")}
+      </select>
+      <input class="input" name="version" type="text" placeholder="v1" value="${escapeAttribute(editing?.version || "")}" />
+      <textarea class="textarea full" name="approvalNotes" placeholder="Approval / review notes">${escapeHtml(editing?.approvalNotes || "")}</textarea>
       <label class="upload-field full">
         <span>Document upload</span>
         <input class="input" name="file" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.txt" />
@@ -1233,22 +1248,32 @@ function renderAssetPreview(asset) {
     return `
       <div class="empty">
         <strong>${escapeHtml(asset.name)}</strong>
+        <div style="margin-top: 10px;"><span class="${workflowStatusClass(asset.status)}">${escapeHtml(asset.status || "Draft")}</span></div>
         <div style="margin-top: 10px;">This asset currently stores metadata only. Upload a file to preview it here.</div>
       </div>
     `;
   }
 
+  const workflowMeta = `
+    <div class="preview-meta">
+      <span class="${workflowStatusClass(asset.status)}">${escapeHtml(asset.status || "Draft")}</span>
+      <span class="pill">v${escapeHtml(asset.version || "1")}</span>
+      ${asset.approvedBy ? `<span class="pill">Approved by ${escapeHtml(asset.approvedBy)}</span>` : ""}
+    </div>
+  `;
+
   if (asset.mimeType === "application/pdf" || asset.fileUrl.toLowerCase().endsWith(".pdf")) {
-    return `<iframe class="asset-preview-frame" src="${escapeAttribute(asset.fileUrl)}" title="${escapeAttribute(asset.name)}"></iframe>`;
+    return `${workflowMeta}<iframe class="asset-preview-frame" src="${escapeAttribute(asset.fileUrl)}" title="${escapeAttribute(asset.name)}"></iframe>`;
   }
 
   if (String(asset.mimeType).startsWith("image/")) {
-    return `<img class="asset-preview-image" src="${escapeAttribute(asset.fileUrl)}" alt="${escapeAttribute(asset.name)}" />`;
+    return `${workflowMeta}<img class="asset-preview-image" src="${escapeAttribute(asset.fileUrl)}" alt="${escapeAttribute(asset.name)}" />`;
   }
 
   return `
     <div class="empty">
       <strong>${escapeHtml(asset.name)}</strong>
+      <div style="margin-top: 10px;">${workflowMeta}</div>
       <div style="margin-top: 10px;">Preview is not supported for this file type yet.</div>
       <div style="margin-top: 10px;"><a href="${escapeAttribute(asset.fileUrl)}" target="_blank" rel="noreferrer">Open document in new tab</a></div>
     </div>
@@ -1271,7 +1296,10 @@ function renderCallsheetAttachment(asset) {
       <strong>${escapeHtml(asset.name)}</strong>
       <span>${escapeHtml(asset.type)} · ${escapeHtml(asset.tag || "Reference doc")}</span>
       <div class="card-footer">
-        <span class="muted">${escapeHtml(asset.fileName || "Document link")}</span>
+        <div class="legend">
+          <span class="muted">${escapeHtml(asset.fileName || "Document link")}</span>
+          <span class="${workflowStatusClass(asset.status)}">${escapeHtml(asset.status || "Draft")}</span>
+        </div>
         <div class="inline-actions">
           ${asset.fileUrl ? `<a class="action-link" href="${escapeAttribute(asset.fileUrl)}" target="_blank" rel="noreferrer">Open</a>` : ""}
         </div>
@@ -1284,7 +1312,7 @@ function renderCallsheetForm(sheet) {
   return `
     <form id="callsheet-form" class="form-grid two">
       <select class="select" name="status">
-        ${["Draft", "Ready to send", "Published"]
+        ${["Draft", "In review", "Approved", "Published"]
           .map((status) => `<option value="${status}" ${status === sheet.status ? "selected" : ""}>${status}</option>`)
           .join("")}
       </select>
@@ -1305,6 +1333,7 @@ function renderCallsheetForm(sheet) {
       <textarea class="textarea full" name="transportNotes" placeholder="Transport notes">${escapeHtml(sheet.transportNotes)}</textarea>
       <textarea class="textarea full" name="parkingNotes" placeholder="Parking notes">${escapeHtml(sheet.parkingNotes)}</textarea>
       <textarea class="textarea full" name="distribution" placeholder="Distribution list">${escapeHtml(sheet.distribution)}</textarea>
+      <textarea class="textarea full" name="approvalNotes" placeholder="Approval notes / release notes">${escapeHtml(sheet.approvalNotes || "")}</textarea>
       <textarea class="textarea full" name="footer" placeholder="Footer / standing note">${escapeHtml(sheet.footer)}</textarea>
       <div class="full stack">
         <strong>Attach production documents</strong>
@@ -1876,6 +1905,7 @@ function prepareCallsheetPayload(formData) {
     weatherNotes: String(formData.get("weatherNotes") || "").trim(),
     additionalNotes: String(formData.get("additionalNotes") || "").trim(),
     distribution: String(formData.get("distribution") || "").trim(),
+    approvalNotes: String(formData.get("approvalNotes") || "").trim(),
     transportNotes: String(formData.get("transportNotes") || "").trim(),
     parkingNotes: String(formData.get("parkingNotes") || "").trim(),
     footer: String(formData.get("footer") || "").trim(),
@@ -1963,12 +1993,13 @@ function sum(items, key) {
 function computeDashboard(data) {
   const estimated = sum(data.budget, "estimated");
   const actual = sum(data.budget, "actual");
+  const pendingApprovals = data.assets.filter((item) => item.status === "In review").length + (data.callsheet?.status === "In review" ? 1 : 0);
   return {
     stats: [
       { label: "Scenes", value: data.scenes.length, note: "Tracked breakdown cards." },
       { label: "Shoot Days", value: data.schedule.length, note: "Scheduled unit days." },
       { label: "Open Tasks", value: data.tasks.filter((item) => item.status !== "Done").length, note: "Action items still active." },
-      { label: "Budget Variance", value: actual - estimated, note: "Actual minus estimated spend." },
+      { label: "Pending approvals", value: pendingApprovals, note: "Docs and call sheets waiting on review." },
     ],
     upcomingDays: data.schedule.slice(0, 4),
     priorityTasks: data.tasks.filter((item) => item.priority === "high" || item.status !== "Done").slice(0, 6),
@@ -2019,10 +2050,16 @@ function resolveCallsheet() {
     weatherNotes: raw.weatherNotes || "",
     additionalNotes: raw.additionalNotes || day.notes || "",
     distribution: raw.distribution || "",
+    approvalNotes: raw.approvalNotes || "",
     footer: raw.footer || settings.callSheetFooter || "",
     sunrise: formatTime(project.sunrise),
     sunset: formatTime(project.sunset),
     attachedAssetIds: raw.attachedAssetIds || [],
+    approvedBy: raw.approvedBy || "",
+    approvedAt: raw.approvedAt || "",
+    publishedAt: raw.publishedAt || "",
+    lastEditedBy: raw.lastEditedBy || "",
+    lastEditedAt: raw.lastEditedAt || "",
   };
 }
 
@@ -2151,6 +2188,13 @@ function taskStatusToBadge(status) {
   if (status === "Done") return "done";
   if (status === "In Progress") return "shooting";
   return "risk";
+}
+
+function workflowStatusClass(status) {
+  if (status === "Approved" || status === "Published") return "status success";
+  if (status === "In review") return "status warning";
+  if (status === "Archived") return "status";
+  return "status";
 }
 
 function statusClass(status) {

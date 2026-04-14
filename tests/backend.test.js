@@ -137,6 +137,7 @@ test("sanitizeCollectionItem normalizes lists and numbers", () => {
 
 test("dashboard metrics are derived from current state", () => {
   const dashboard = buildDashboard({
+    callsheet: { status: "In review" },
     scenes: [{ id: "1" }, { id: "2" }],
     schedule: [{ id: "a" }],
     tasks: [
@@ -144,13 +145,13 @@ test("dashboard metrics are derived from current state", () => {
       { id: "t2", priority: "low", status: "Done" },
     ],
     budget: [{ estimated: 10, actual: 15 }],
-    assets: [{ id: "asset-1" }],
+    assets: [{ id: "asset-1", status: "In review" }],
   });
 
   assert.equal(dashboard.stats[0].value, 2);
   assert.equal(dashboard.stats[1].value, 1);
   assert.equal(dashboard.stats[2].value, 1);
-  assert.equal(dashboard.stats[3].value, 5);
+  assert.equal(dashboard.stats[3].value, 2);
   assert.equal(dashboard.priorityTasks.length, 1);
 });
 

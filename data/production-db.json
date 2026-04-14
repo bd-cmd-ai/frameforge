@@ -117,6 +117,12 @@
     "additionalNotes": "Rain FX day. Safety rehearsal at 08:00. Confirm hero prop sign-out with props.",
     "distribution": "Heads of department, cast, transport captain, production office",
     "footer": "All departments check in on arrival, confirm safety briefing attendance, and escalate red flags immediately.",
+    "approvalNotes": "",
+    "approvedBy": "",
+    "approvedAt": "",
+    "publishedAt": "",
+    "lastEditedBy": "",
+    "lastEditedAt": "",
     "attachedAssetIds": [
       "asset-1",
       "asset-2"
@@ -308,7 +314,14 @@
       "type": "PDF",
       "owner": "Lighting",
       "updated": "2026-05-25",
-      "tag": "Tech scout"
+      "tag": "Tech scout",
+      "status": "Approved",
+      "version": "v7",
+      "approvalNotes": "Approved after tech scout walkthrough.",
+      "approvedBy": "Miles Ortega",
+      "approvedAt": "2026-05-25T18:20:00.000Z",
+      "lastEditedBy": "Miles Ortega",
+      "lastEditedAt": "2026-05-25T18:20:00.000Z"
     },
     {
       "id": "asset-2",
@@ -316,7 +329,14 @@
       "type": "DOC",
       "owner": "Production",
       "updated": "2026-05-24",
-      "tag": "Safety"
+      "tag": "Safety",
+      "status": "In review",
+      "version": "v2",
+      "approvalNotes": "Awaiting final marine coordinator sign-off.",
+      "approvedBy": "",
+      "approvedAt": "",
+      "lastEditedBy": "Petra Kranjc",
+      "lastEditedAt": "2026-05-24T14:30:00.000Z"
     },
     {
       "id": "asset-3",
@@ -324,7 +344,14 @@
       "type": "PNG",
       "owner": "Direction",
       "updated": "2026-05-26",
-      "tag": "Creative"
+      "tag": "Creative",
+      "status": "Draft",
+      "version": "v3",
+      "approvalNotes": "",
+      "approvedBy": "",
+      "approvedAt": "",
+      "lastEditedBy": "Nadia Verhoeven",
+      "lastEditedAt": "2026-05-26T09:00:00.000Z"
     }
   ]
 }

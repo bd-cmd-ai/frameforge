@@ -158,6 +158,12 @@ const DEFAULT_DB = {
     distribution: "Heads of department, cast, transport captain, production office",
     footer: "All departments check in on arrival, confirm safety briefing attendance, and escalate red flags immediately.",
     attachedAssetIds: ["asset-1", "asset-2"],
+    approvalNotes: "",
+    approvedBy: "",
+    approvedAt: "",
+    publishedAt: "",
+    lastEditedBy: "",
+    lastEditedAt: "",
   },
   schedule: [
     {
@@ -291,6 +297,13 @@ const DEFAULT_DB = {
       owner: "Lighting",
       updated: "2026-05-25",
       tag: "Tech scout",
+      status: "Approved",
+      version: "v7",
+      approvalNotes: "Approved after tech scout walkthrough.",
+      approvedBy: "Miles Ortega",
+      approvedAt: "2026-05-25T18:20:00.000Z",
+      lastEditedBy: "Miles Ortega",
+      lastEditedAt: "2026-05-25T18:20:00.000Z",
       fileName: "",
       fileUrl: "",
       mimeType: "",
@@ -303,6 +316,13 @@ const DEFAULT_DB = {
       owner: "Production",
       updated: "2026-05-24",
       tag: "Safety",
+      status: "In review",
+      version: "v2",
+      approvalNotes: "Awaiting final marine coordinator sign-off.",
+      approvedBy: "",
+      approvedAt: "",
+      lastEditedBy: "Petra Kranjc",
+      lastEditedAt: "2026-05-24T14:30:00.000Z",
       fileName: "",
       fileUrl: "",
       mimeType: "",
@@ -315,6 +335,13 @@ const DEFAULT_DB = {
       owner: "Direction",
       updated: "2026-05-26",
       tag: "Creative",
+      status: "Draft",
+      version: "v3",
+      approvalNotes: "",
+      approvedBy: "",
+      approvedAt: "",
+      lastEditedBy: "Nadia Verhoeven",
+      lastEditedAt: "2026-05-26T09:00:00.000Z",
       fileName: "",
       fileUrl: "",
       mimeType: "",
@@ -613,12 +640,13 @@ function normalizeDb(raw) {
 function buildDashboard(state) {
   const estimated = state.budget.reduce((sum, item) => sum + Number(item.estimated || 0), 0);
   const actual = state.budget.reduce((sum, item) => sum + Number(item.actual || 0), 0);
+  const pendingApprovals = state.assets.filter((item) => item.status === "In review").length + (state.callsheet.status === "In review" ? 1 : 0);
   return {
     stats: [
       { label: "Scenes", value: state.scenes.length, note: "Tracked scene breakdown cards." },
       { label: "Shoot Days", value: state.schedule.length, note: "Scheduled production days." },
       { label: "Open Tasks", value: state.tasks.filter((item) => item.status !== "Done").length, note: "Action items still in flight." },
-      { label: "Budget Variance", value: actual - estimated, note: "Actual minus estimated spend." },
+      { label: "Pending approvals", value: pendingApprovals, note: "Docs and call sheets waiting on review." },
     ],
     upcomingDays: state.schedule.slice(0, 4),
     priorityTasks: state.tasks.filter((item) => item.priority === "high" || item.status !== "Done").slice(0, 6),
@@ -668,7 +696,7 @@ function sanitizeSettings(payload) {
 
 function sanitizeCallsheet(payload) {
   return {
-    status: stringValue(payload.status) || "Draft",
+    status: normalizeCallsheetStatus(payload.status),
     unit: stringValue(payload.unit) || "Main Unit",
     shootDate: stringValue(payload.shootDate),
     crewCall: stringValue(payload.crewCall),
@@ -688,6 +716,12 @@ function sanitizeCallsheet(payload) {
     distribution: stringValue(payload.distribution),
     footer: stringValue(payload.footer),
     attachedAssetIds: normalizeList(payload.attachedAssetIds),
+    approvalNotes: stringValue(payload.approvalNotes),
+    approvedBy: stringValue(payload.approvedBy),
+    approvedAt: stringValue(payload.approvedAt),
+    publishedAt: stringValue(payload.publishedAt),
+    lastEditedBy: stringValue(payload.lastEditedBy),
+    lastEditedAt: stringValue(payload.lastEditedAt),
   };
 }
 
@@ -766,6 +800,13 @@ function sanitizeCollectionItem(collection, payload, id) {
         owner: stringValue(payload.owner),
         updated: stringValue(payload.updated),
         tag: stringValue(payload.tag),
+        status: normalizeAssetStatus(payload.status),
+        version: stringValue(payload.version),
+        approvalNotes: stringValue(payload.approvalNotes),
+        approvedBy: stringValue(payload.approvedBy),
+        approvedAt: stringValue(payload.approvedAt),
+        lastEditedBy: stringValue(payload.lastEditedBy),
+        lastEditedAt: stringValue(payload.lastEditedAt),
         fileName: stringValue(payload.fileName),
         fileUrl: stringValue(payload.fileUrl),
         mimeType: stringValue(payload.mimeType),
@@ -793,6 +834,16 @@ function normalizeCurrency(value) {
 function normalizeLocale(value) {
   const normalized = String(value || "").trim();
   return ["sl-SI", "en-GB", "en-US"].includes(normalized) ? normalized : "en-GB";
+}
+
+function normalizeAssetStatus(value) {
+  const normalized = String(value || "").trim();
+  return ["Draft", "In review", "Approved", "Archived"].includes(normalized) ? normalized : "Draft";
+}
+
+function normalizeCallsheetStatus(value) {
+  const normalized = String(value || "").trim();
+  return ["Draft", "In review", "Approved", "Published"].includes(normalized) ? normalized : "Draft";
 }
 
 function normalizeList(value) {
@@ -994,7 +1045,8 @@ function createApp(options = {}) {
         return sendJson(response, 403, { error: "You do not have permission to edit the call sheet." });
       }
       const body = await readJsonBody(request);
-      const callsheet = await store.updateCallsheet(body);
+      const current = store.getPublicState().callsheet;
+      const callsheet = await store.updateCallsheet(applyCallsheetWorkflow(current, body, auth.user));
       return sendJson(response, 200, { callsheet });
     }
 
@@ -1079,7 +1131,9 @@ function createApp(options = {}) {
         return sendJson(response, 403, { error: "You do not have permission to edit this module." });
       }
       const body = await readJsonBody(request);
-      const payload = collection === "assets" ? await persistAssetUpload(rootDir, body) : body;
+      const payload = collection === "assets"
+        ? applyAssetWorkflow(null, await persistAssetUpload(rootDir, body), auth.user)
+        : body;
       const item = await store.createItem(collection, payload);
       return sendJson(response, 201, { item });
     }
@@ -1092,7 +1146,9 @@ function createApp(options = {}) {
       const existing = collection === "assets"
         ? store.getPublicState()[collection].find((entry) => entry.id === id) || null
         : null;
-      const payload = collection === "assets" ? await persistAssetUpload(rootDir, body, id, existing) : body;
+      const payload = collection === "assets"
+        ? applyAssetWorkflow(existing, await persistAssetUpload(rootDir, body, id, existing), auth.user)
+        : body;
       const item = await store.updateItem(collection, id, payload);
       if (!item) {
         return sendJson(response, 404, { error: "Record not found" });
@@ -1402,6 +1458,57 @@ function sanitizeFileExtension(fileName, mimeType) {
 
 function mimeFromExtension(extension) {
   return STATIC_MIME_TYPES[extension] || "application/octet-stream";
+}
+
+function applyAssetWorkflow(existing, payload, user) {
+  const now = new Date().toISOString();
+  const previous = existing || {};
+  const nextStatus = normalizeAssetStatus(payload.status || previous.status);
+  const next = {
+    ...previous,
+    ...payload,
+    status: nextStatus,
+    lastEditedBy: user.name,
+    lastEditedAt: now,
+  };
+
+  if (nextStatus === "Approved") {
+    next.approvedBy = user.name;
+    next.approvedAt = now;
+  }
+
+  if (nextStatus === "Draft" || nextStatus === "In review") {
+    next.approvedBy = previous.approvedBy || "";
+    next.approvedAt = previous.approvedAt || "";
+  }
+
+  return next;
+}
+
+function applyCallsheetWorkflow(existing, payload, user) {
+  const now = new Date().toISOString();
+  const previous = existing || {};
+  const nextStatus = normalizeCallsheetStatus(payload.status || previous.status);
+  const next = {
+    ...previous,
+    ...payload,
+    status: nextStatus,
+    lastEditedBy: user.name,
+    lastEditedAt: now,
+  };
+
+  if (nextStatus === "Approved" || nextStatus === "Published") {
+    next.approvedBy = user.name;
+    next.approvedAt = now;
+  }
+
+  if (nextStatus === "Published") {
+    next.publishedAt = now;
+  } else {
+    next.publishedAt = previous.publishedAt || "";
+  }
+
+  return next;
 }
 
 function slugify(value) {
