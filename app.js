@@ -685,22 +685,18 @@ function renderBreakdownView() {
 }
 
 function renderCallsheetView() {
-  const day = state.data.schedule[0];
-  const project = state.data.project;
-  const settings = state.data.settings;
-  const leads = state.data.contacts.slice(0, 4);
-  const resolvedLocation = project.locationLabel || project.location || "Basecamp TBD";
-  const basecamp = settings.defaultBasecamp || resolvedLocation;
+  const sheet = resolveCallsheet();
+  const canEdit = canEditModule("callsheet");
 
   return `
     <section class="content">
       <div class="hero">
         <article class="hero-panel">
-          <span class="pill dark">Live from schedule + project data</span>
-          <h3>${escapeHtml(day?.day || "No day scheduled")} · ${formatDate(day?.date)}</h3>
+          <span class="pill dark">${escapeHtml(sheet.status)} · ${escapeHtml(sheet.unit)}</span>
+          <h3>${escapeHtml(sheet.dayLabel)} · ${formatDate(sheet.shootDate)}</h3>
           <p>
-            Crew call ${escapeHtml(day?.callTime || "TBD")} at ${escapeHtml(day?.location || resolvedLocation)}.
-            Weather: ${escapeHtml(project.weather)}. Scenes: ${escapeHtml((day?.scenes || []).join(", ") || "TBD")}.
+            Crew call ${escapeHtml(sheet.crewCall)} at ${escapeHtml(sheet.locationDetails)}.
+            Weather: ${escapeHtml(sheet.weather)}. Scenes: ${escapeHtml(sheet.sceneCodes.join(", ") || "TBD")}.
           </p>
         </article>
         <article class="hero-side panel">
@@ -709,10 +705,33 @@ function renderCallsheetView() {
             <p>Live location-aware context combined with studio-wide defaults.</p>
           </div>
           <div class="mini-list" style="margin-top: 18px;">
-            <div class="mini-item"><strong>Hospital</strong><span>${escapeHtml(settings.emergencyHospital || "TBD")} · ${escapeHtml(settings.emergencyPhone || "TBD")}</span></div>
-            <div class="mini-item"><strong>Sunrise / Sunset</strong><span>${escapeHtml(formatTime(project.sunrise))} / ${escapeHtml(formatTime(project.sunset))}</span></div>
-            <div class="mini-item"><strong>Basecamp</strong><span>${escapeHtml(basecamp)}</span></div>
+            <div class="mini-item"><strong>Hospital</strong><span>${escapeHtml(sheet.hospitalName)} · ${escapeHtml(sheet.hospitalPhone)}</span></div>
+            <div class="mini-item"><strong>Sunrise / Sunset</strong><span>${escapeHtml(sheet.sunrise)} / ${escapeHtml(sheet.sunset)}</span></div>
+            <div class="mini-item"><strong>Basecamp</strong><span>${escapeHtml(sheet.basecamp)}</span></div>
           </div>
+        </article>
+      </div>
+
+      <div class="callsheet-stats">
+        <article class="metric-card">
+          <span>Crew call</span>
+          <strong>${escapeHtml(sheet.crewCall)}</strong>
+          <p>Full crew reporting time.</p>
+        </article>
+        <article class="metric-card">
+          <span>First shot</span>
+          <strong>${escapeHtml(sheet.firstShot)}</strong>
+          <p>Target for cameras rolling.</p>
+        </article>
+        <article class="metric-card">
+          <span>Meal break</span>
+          <strong>${escapeHtml(sheet.mealBreak)}</strong>
+          <p>Current schedule meal timing.</p>
+        </article>
+        <article class="metric-card">
+          <span>Wrap</span>
+          <strong>${escapeHtml(sheet.wrapTime)}</strong>
+          <p>Planned unit wrap time.</p>
         </article>
       </div>
 
@@ -720,28 +739,84 @@ function renderCallsheetView() {
         <section class="panel">
           <div class="section-head">
             <div class="section-copy">
-              <h3>Set notes</h3>
-              <p>Daily briefing summary.</p>
+              <h3>Daily packet</h3>
+              <p>Everything the crew needs for the active day.</p>
             </div>
           </div>
           <div class="list">
-            <div class="list-item"><strong>Logistics</strong><span>${escapeHtml(day?.notes || "No set notes yet.")}</span></div>
-            <div class="list-item"><strong>Transport</strong><span>${escapeHtml(settings.transportNotes || "Add default transport notes in Global Settings.")}</span></div>
-            <div class="list-item"><strong>Parking</strong><span>${escapeHtml(settings.parkingNotes || "Add default parking notes in Global Settings.")}</span></div>
-            <div class="list-item"><strong>Director</strong><span>${escapeHtml(project.director)}</span></div>
-            <div class="list-item"><strong>Producer</strong><span>${escapeHtml(project.producer)}</span></div>
-            <div class="list-item"><strong>Standing note</strong><span>${escapeHtml(settings.callSheetFooter || "Add your recurring footer in Global Settings.")}</span></div>
+            <div class="list-item"><strong>Location</strong><span>${escapeHtml(sheet.locationDetails)}</span></div>
+            <div class="list-item"><strong>Weather</strong><span>${escapeHtml(sheet.weatherNotes || sheet.weather)}</span></div>
+            <div class="list-item"><strong>Logistics</strong><span>${escapeHtml(sheet.additionalNotes)}</span></div>
+            <div class="list-item"><strong>Transport</strong><span>${escapeHtml(sheet.transportNotes)}</span></div>
+            <div class="list-item"><strong>Parking</strong><span>${escapeHtml(sheet.parkingNotes)}</span></div>
+            <div class="list-item"><strong>Distribution</strong><span>${escapeHtml(sheet.distribution)}</span></div>
+            <div class="list-item"><strong>Standing note</strong><span>${escapeHtml(sheet.footer)}</span></div>
           </div>
         </section>
         <section class="panel">
           <div class="section-head">
             <div class="section-copy">
-              <h3>Key contacts</h3>
-              <p>Pulled directly from the contacts module.</p>
+              <h3>Scenes, cast & docs</h3>
+              <p>Pulled live from scenes, contacts, and assets.</p>
+            </div>
+          </div>
+          <div class="stack">
+            <div class="callout">
+              <strong>Scene lineup</strong>
+              <div class="record-list" style="margin-top: 12px;">
+                ${sheet.sceneCards.length ? sheet.sceneCards.map(renderCallsheetSceneCard).join("") : `<div class="empty">No scenes selected for this call sheet.</div>`}
+              </div>
+            </div>
+            <div class="callout">
+              <strong>Cast on day</strong>
+              <div class="legend" style="margin-top: 12px;">
+                ${sheet.castNames.length ? sheet.castNames.map((name) => `<span class="pill">${escapeHtml(name)}</span>`).join("") : `<span class="muted">No cast roster derived yet.</span>`}
+              </div>
+            </div>
+            <div class="callout">
+              <strong>Attached documents</strong>
+              <div class="record-list" style="margin-top: 12px;">
+                ${sheet.attachments.length ? sheet.attachments.map(renderCallsheetAttachment).join("") : `<div class="empty">No reference documents attached yet.</div>`}
+              </div>
+            </div>
+            <div class="callout">
+              <strong>Key contacts</strong>
+              <div class="list" style="margin-top: 12px;">
+                ${sheet.contacts.length ? sheet.contacts.map(renderContactCard).join("") : `<div class="empty">No key contacts available.</div>`}
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="grid-two">
+        <section class="panel">
+          <div class="section-head">
+            <div class="section-copy">
+              <h3>Call sheet editor</h3>
+              <p>Persist day-specific timings, logistics, distribution, and attached docs.</p>
+            </div>
+          </div>
+          ${
+            canEdit
+              ? renderCallsheetForm(sheet)
+              : renderReadOnlyCard("The call sheet is view-only for your account.")
+          }
+        </section>
+        <section class="panel">
+          <div class="section-head">
+            <div class="section-copy">
+              <h3>Publish checklist</h3>
+              <p>Quick review before sending the day pack.</p>
             </div>
           </div>
           <div class="list">
-            ${leads.map(renderContactCard).join("")}
+            <div class="list-item"><strong>Status</strong><span>${escapeHtml(sheet.status)}</span></div>
+            <div class="list-item"><strong>Crew / cast calls</strong><span>${escapeHtml(sheet.crewCall)} / ${escapeHtml(sheet.castCall)}</span></div>
+            <div class="list-item"><strong>Scenes on day</strong><span>${escapeHtml(sheet.sceneCodes.join(", ") || "None")}</span></div>
+            <div class="list-item"><strong>Attached assets</strong><span>${sheet.attachments.length} linked documents</span></div>
+            <div class="list-item"><strong>Emergency details</strong><span>${escapeHtml(sheet.hospitalName)} · ${escapeHtml(sheet.hospitalPhone)}</span></div>
+            <div class="list-item"><strong>Footer note</strong><span>${escapeHtml(sheet.footer)}</span></div>
           </div>
         </section>
       </div>
@@ -1180,6 +1255,84 @@ function renderAssetPreview(asset) {
   `;
 }
 
+function renderCallsheetSceneCard(scene) {
+  return `
+    <article class="record">
+      <strong>${escapeHtml(scene.code)} · ${escapeHtml(scene.title)}</strong>
+      <span>${escapeHtml(scene.setup)} · ${escapeHtml(scene.location)} · ${escapeHtml(scene.pages)} pages</span>
+      <div class="muted">Cast: ${escapeHtml(scene.cast)}</div>
+    </article>
+  `;
+}
+
+function renderCallsheetAttachment(asset) {
+  return `
+    <article class="record">
+      <strong>${escapeHtml(asset.name)}</strong>
+      <span>${escapeHtml(asset.type)} · ${escapeHtml(asset.tag || "Reference doc")}</span>
+      <div class="card-footer">
+        <span class="muted">${escapeHtml(asset.fileName || "Document link")}</span>
+        <div class="inline-actions">
+          ${asset.fileUrl ? `<a class="action-link" href="${escapeAttribute(asset.fileUrl)}" target="_blank" rel="noreferrer">Open</a>` : ""}
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function renderCallsheetForm(sheet) {
+  return `
+    <form id="callsheet-form" class="form-grid two">
+      <select class="select" name="status">
+        ${["Draft", "Ready to send", "Published"]
+          .map((status) => `<option value="${status}" ${status === sheet.status ? "selected" : ""}>${status}</option>`)
+          .join("")}
+      </select>
+      <input class="input" name="unit" type="text" placeholder="Unit" value="${escapeAttribute(sheet.unit)}" />
+      <input class="input" name="shootDate" type="date" value="${escapeAttribute(sheet.shootDateRaw)}" />
+      <input class="input" name="locationDetails" type="text" placeholder="Location details" value="${escapeAttribute(sheet.locationDetails)}" />
+      <input class="input" name="crewCall" type="time" value="${escapeAttribute(sheet.crewCallRaw)}" />
+      <input class="input" name="castCall" type="time" value="${escapeAttribute(sheet.castCallRaw)}" />
+      <input class="input" name="firstShot" type="time" value="${escapeAttribute(sheet.firstShotRaw)}" />
+      <input class="input" name="mealBreak" type="time" value="${escapeAttribute(sheet.mealBreakRaw)}" />
+      <input class="input" name="wrapTime" type="time" value="${escapeAttribute(sheet.wrapTimeRaw)}" />
+      <input class="input" name="basecamp" type="text" placeholder="Basecamp" value="${escapeAttribute(sheet.basecamp)}" />
+      <input class="input full" name="sceneCodes" type="text" placeholder="24A, 24B, 25" value="${escapeAttribute(sheet.sceneCodes.join(", "))}" />
+      <input class="input" name="hospitalName" type="text" placeholder="Hospital" value="${escapeAttribute(sheet.hospitalName)}" />
+      <input class="input" name="hospitalPhone" type="text" placeholder="Emergency phone" value="${escapeAttribute(sheet.hospitalPhone)}" />
+      <textarea class="textarea full" name="weatherNotes" placeholder="Optional weather note override">${escapeHtml(sheet.weatherNotesRaw)}</textarea>
+      <textarea class="textarea full" name="additionalNotes" placeholder="Daily logistics / notes">${escapeHtml(sheet.additionalNotes)}</textarea>
+      <textarea class="textarea full" name="transportNotes" placeholder="Transport notes">${escapeHtml(sheet.transportNotes)}</textarea>
+      <textarea class="textarea full" name="parkingNotes" placeholder="Parking notes">${escapeHtml(sheet.parkingNotes)}</textarea>
+      <textarea class="textarea full" name="distribution" placeholder="Distribution list">${escapeHtml(sheet.distribution)}</textarea>
+      <textarea class="textarea full" name="footer" placeholder="Footer / standing note">${escapeHtml(sheet.footer)}</textarea>
+      <div class="full stack">
+        <strong>Attach production documents</strong>
+        <div class="attachment-grid">
+          ${state.data.assets.length
+            ? state.data.assets
+                .map(
+                  (asset) => `
+                    <label class="attachment-option">
+                      <input type="checkbox" name="attachedAssetIds" value="${escapeAttribute(asset.id)}" ${sheet.attachedAssetIds.includes(asset.id) ? "checked" : ""} />
+                      <span>
+                        <strong>${escapeHtml(asset.name)}</strong>
+                        <small>${escapeHtml(asset.type)} · ${escapeHtml(asset.tag || "Reference")}</small>
+                      </span>
+                    </label>
+                  `
+                )
+                .join("")
+            : `<div class="empty">Upload assets first to attach them to the call sheet.</div>`}
+        </div>
+      </div>
+      <div class="button-row full">
+        <button class="button" type="submit">Save call sheet</button>
+      </div>
+    </form>
+  `;
+}
+
 function renderCollectionForm(collection, editing, fields) {
   return `
     <form class="form-grid two" data-collection-form="${collection}">
@@ -1444,6 +1597,21 @@ async function handleSubmit(event) {
     return;
   }
 
+  if (form.id === "callsheet-form") {
+    event.preventDefault();
+    const formData = new FormData(form);
+    const payload = prepareCallsheetPayload(formData);
+    await mutate(async () => {
+      const response = await api("/callsheet", {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
+      state.data.callsheet = response.callsheet;
+      state.flash = "Call sheet updated.";
+    });
+    return;
+  }
+
   if (form.id === "user-form") {
     event.preventDefault();
     const formData = new FormData(form);
@@ -1690,6 +1858,31 @@ function prepareUserPayload(formData) {
   return payload;
 }
 
+function prepareCallsheetPayload(formData) {
+  return {
+    status: String(formData.get("status") || "").trim(),
+    unit: String(formData.get("unit") || "").trim(),
+    shootDate: String(formData.get("shootDate") || "").trim(),
+    crewCall: String(formData.get("crewCall") || "").trim(),
+    castCall: String(formData.get("castCall") || "").trim(),
+    firstShot: String(formData.get("firstShot") || "").trim(),
+    mealBreak: String(formData.get("mealBreak") || "").trim(),
+    wrapTime: String(formData.get("wrapTime") || "").trim(),
+    locationDetails: String(formData.get("locationDetails") || "").trim(),
+    basecamp: String(formData.get("basecamp") || "").trim(),
+    sceneCodes: splitList(String(formData.get("sceneCodes") || "")),
+    hospitalName: String(formData.get("hospitalName") || "").trim(),
+    hospitalPhone: String(formData.get("hospitalPhone") || "").trim(),
+    weatherNotes: String(formData.get("weatherNotes") || "").trim(),
+    additionalNotes: String(formData.get("additionalNotes") || "").trim(),
+    distribution: String(formData.get("distribution") || "").trim(),
+    transportNotes: String(formData.get("transportNotes") || "").trim(),
+    parkingNotes: String(formData.get("parkingNotes") || "").trim(),
+    footer: String(formData.get("footer") || "").trim(),
+    attachedAssetIds: formData.getAll("attachedAssetIds").map((value) => String(value).trim()).filter(Boolean),
+  };
+}
+
 async function api(path, options = {}) {
   const token = options.token !== undefined ? options.token : state.token;
   const response = await fetch(`${API_BASE}${path}`, {
@@ -1780,6 +1973,56 @@ function computeDashboard(data) {
     upcomingDays: data.schedule.slice(0, 4),
     priorityTasks: data.tasks.filter((item) => item.priority === "high" || item.status !== "Done").slice(0, 6),
     latestAssets: data.assets.slice(0, 5),
+  };
+}
+
+function resolveCallsheet() {
+  const raw = state.data.callsheet || {};
+  const project = state.data.project || {};
+  const settings = state.data.settings || {};
+  const day = state.data.schedule?.[0] || {};
+  const sceneCodes = raw.sceneCodes?.length ? raw.sceneCodes : day.scenes || [];
+  const sceneCards = state.data.scenes.filter((scene) => sceneCodes.includes(scene.code));
+  const castNames = [...new Set(sceneCards.flatMap((scene) => splitList(scene.cast || "")))];
+  const attachments = state.data.assets.filter((asset) => (raw.attachedAssetIds || []).includes(asset.id));
+  const contacts = state.data.contacts.slice(0, 6);
+
+  return {
+    status: raw.status || "Draft",
+    unit: raw.unit || "Main Unit",
+    dayLabel: day.day || "No day scheduled",
+    shootDate: raw.shootDate || day.date || "",
+    shootDateRaw: raw.shootDate || day.date || "",
+    crewCall: raw.crewCall || day.callTime || "TBD",
+    crewCallRaw: raw.crewCall || day.callTime || "",
+    castCall: raw.castCall || raw.crewCall || day.callTime || "",
+    castCallRaw: raw.castCall || raw.crewCall || day.callTime || "",
+    firstShot: raw.firstShot || "",
+    firstShotRaw: raw.firstShot || "",
+    mealBreak: raw.mealBreak || "",
+    mealBreakRaw: raw.mealBreak || "",
+    wrapTime: raw.wrapTime || "",
+    wrapTimeRaw: raw.wrapTime || "",
+    locationDetails: raw.locationDetails || day.location || project.locationLabel || project.location || "TBD",
+    basecamp: raw.basecamp || settings.defaultBasecamp || project.locationLabel || project.location || "TBD",
+    sceneCodes,
+    sceneCards,
+    castNames,
+    attachments,
+    contacts,
+    hospitalName: raw.hospitalName || settings.emergencyHospital || "TBD",
+    hospitalPhone: raw.hospitalPhone || settings.emergencyPhone || "TBD",
+    transportNotes: raw.transportNotes || settings.transportNotes || "",
+    parkingNotes: raw.parkingNotes || settings.parkingNotes || "",
+    weather: project.weather || "Weather sync pending",
+    weatherNotesRaw: raw.weatherNotes || "",
+    weatherNotes: raw.weatherNotes || "",
+    additionalNotes: raw.additionalNotes || day.notes || "",
+    distribution: raw.distribution || "",
+    footer: raw.footer || settings.callSheetFooter || "",
+    sunrise: formatTime(project.sunrise),
+    sunset: formatTime(project.sunset),
+    attachedAssetIds: raw.attachedAssetIds || [],
   };
 }
 

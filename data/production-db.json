@@ -93,6 +93,35 @@
     "parkingNotes": "Crew parking is assigned by department. Keep access lanes clear for tech vehicles and emergency services.",
     "callSheetFooter": "All departments check in on arrival, confirm safety briefing attendance, and escalate red flags immediately."
   },
+  "callsheet": {
+    "status": "Draft",
+    "unit": "Main Unit",
+    "shootDate": "2026-05-27",
+    "crewCall": "06:00",
+    "castCall": "06:30",
+    "firstShot": "07:15",
+    "mealBreak": "13:00",
+    "wrapTime": "19:00",
+    "locationDetails": "Warehouse Stage B",
+    "basecamp": "Ljubljana production office",
+    "sceneCodes": [
+      "24A",
+      "24B",
+      "25"
+    ],
+    "parkingNotes": "Crew parking is assigned by department. Keep access lanes clear for tech vehicles and emergency services.",
+    "transportNotes": "Unit vans depart 45 minutes before crew call. Confirm seat allocations with the transport captain.",
+    "hospitalName": "University Medical Centre Ljubljana",
+    "hospitalPhone": "+386 1 522 5050",
+    "weatherNotes": "",
+    "additionalNotes": "Rain FX day. Safety rehearsal at 08:00. Confirm hero prop sign-out with props.",
+    "distribution": "Heads of department, cast, transport captain, production office",
+    "footer": "All departments check in on arrival, confirm safety briefing attendance, and escalate red flags immediately.",
+    "attachedAssetIds": [
+      "asset-1",
+      "asset-2"
+    ]
+  },
   "schedule": [
     {
       "id": "day-12",

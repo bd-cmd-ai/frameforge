@@ -137,6 +137,28 @@ const DEFAULT_DB = {
     parkingNotes: "Crew parking is assigned by department. Keep access lanes clear for tech vehicles and emergency services.",
     callSheetFooter: "All departments check in on arrival, confirm safety briefing attendance, and escalate red flags immediately.",
   },
+  callsheet: {
+    status: "Draft",
+    unit: "Main Unit",
+    shootDate: "2026-05-27",
+    crewCall: "06:00",
+    castCall: "06:30",
+    firstShot: "07:15",
+    mealBreak: "13:00",
+    wrapTime: "19:00",
+    locationDetails: "Warehouse Stage B",
+    basecamp: "Ljubljana production office",
+    sceneCodes: ["24A", "24B", "25"],
+    parkingNotes: "Crew parking is assigned by department. Keep access lanes clear for tech vehicles and emergency services.",
+    transportNotes: "Unit vans depart 45 minutes before crew call. Confirm seat allocations with the transport captain.",
+    hospitalName: "University Medical Centre Ljubljana",
+    hospitalPhone: "+386 1 522 5050",
+    weatherNotes: "",
+    additionalNotes: "Rain FX day. Safety rehearsal at 08:00. Confirm hero prop sign-out with props.",
+    distribution: "Heads of department, cast, transport captain, production office",
+    footer: "All departments check in on arrival, confirm safety briefing attendance, and escalate red flags immediately.",
+    attachedAssetIds: ["asset-1", "asset-2"],
+  },
   schedule: [
     {
       id: "day-12",
@@ -374,6 +396,7 @@ function createStore(options = {}) {
     return {
       project: structuredClone(state.project),
       settings: structuredClone(state.settings),
+      callsheet: structuredClone(state.callsheet),
       schedule: structuredClone(state.schedule),
       scenes: structuredClone(state.scenes),
       contacts: structuredClone(state.contacts),
@@ -390,6 +413,7 @@ function createStore(options = {}) {
     const filtered = {
       project: canViewModule(user, "project") ? structuredClone(state.project) : {},
       settings: canViewModule(user, "settings") ? structuredClone(state.settings) : {},
+      callsheet: canViewModule(user, "callsheet") ? structuredClone(state.callsheet) : {},
       schedule: canViewModule(user, "schedule") ? structuredClone(state.schedule) : [],
       scenes: canViewModule(user, "scenes") ? structuredClone(state.scenes) : [],
       contacts: canViewModule(user, "contacts") ? structuredClone(state.contacts) : [],
@@ -496,15 +520,21 @@ function createStore(options = {}) {
   }
 
   async function updateProject(payload) {
-    cache.project = { ...cache.project, ...sanitizeProject(payload) };
+    cache.project = sanitizeProject({ ...cache.project, ...payload });
     await persist();
     return structuredClone(cache.project);
   }
 
   async function updateSettings(payload) {
-    cache.settings = { ...cache.settings, ...sanitizeSettings(payload) };
+    cache.settings = sanitizeSettings({ ...cache.settings, ...payload });
     await persist();
     return structuredClone(cache.settings);
+  }
+
+  async function updateCallsheet(payload) {
+    cache.callsheet = sanitizeCallsheet({ ...cache.callsheet, ...payload });
+    await persist();
+    return structuredClone(cache.callsheet);
   }
 
   async function createItem(collection, payload) {
@@ -551,6 +581,7 @@ function createStore(options = {}) {
     findUserById,
     updateProject,
     updateSettings,
+    updateCallsheet,
     createUser,
     updateUser,
     deleteUser,
@@ -567,8 +598,9 @@ function normalizeDb(raw) {
     users: Array.isArray(source.users) && source.users.length
       ? source.users.map((entry) => sanitizeUser(entry, entry.id || createId("user")))
       : structuredClone(DEFAULT_DB.users),
-    project: { ...DEFAULT_DB.project, ...(source.project || {}) },
-    settings: { ...DEFAULT_DB.settings, ...(source.settings || {}) },
+    project: sanitizeProject({ ...DEFAULT_DB.project, ...(source.project || {}) }),
+    settings: sanitizeSettings({ ...DEFAULT_DB.settings, ...(source.settings || {}) }),
+    callsheet: sanitizeCallsheet({ ...DEFAULT_DB.callsheet, ...(source.callsheet || {}) }),
     schedule: Array.isArray(source.schedule) ? source.schedule : structuredClone(DEFAULT_DB.schedule),
     scenes: Array.isArray(source.scenes) ? source.scenes : structuredClone(DEFAULT_DB.scenes),
     contacts: Array.isArray(source.contacts) ? source.contacts : structuredClone(DEFAULT_DB.contacts),
@@ -596,6 +628,7 @@ function buildDashboard(state) {
 
 function sanitizeProject(payload) {
   return {
+    id: stringValue(payload.id) || DEFAULT_DB.project.id,
     title: stringValue(payload.title),
     tagline: stringValue(payload.tagline),
     status: stringValue(payload.status),
@@ -630,6 +663,31 @@ function sanitizeSettings(payload) {
     transportNotes: stringValue(payload.transportNotes),
     parkingNotes: stringValue(payload.parkingNotes),
     callSheetFooter: stringValue(payload.callSheetFooter),
+  };
+}
+
+function sanitizeCallsheet(payload) {
+  return {
+    status: stringValue(payload.status) || "Draft",
+    unit: stringValue(payload.unit) || "Main Unit",
+    shootDate: stringValue(payload.shootDate),
+    crewCall: stringValue(payload.crewCall),
+    castCall: stringValue(payload.castCall),
+    firstShot: stringValue(payload.firstShot),
+    mealBreak: stringValue(payload.mealBreak),
+    wrapTime: stringValue(payload.wrapTime),
+    locationDetails: stringValue(payload.locationDetails),
+    basecamp: stringValue(payload.basecamp),
+    sceneCodes: normalizeList(payload.sceneCodes),
+    parkingNotes: stringValue(payload.parkingNotes),
+    transportNotes: stringValue(payload.transportNotes),
+    hospitalName: stringValue(payload.hospitalName),
+    hospitalPhone: stringValue(payload.hospitalPhone),
+    weatherNotes: stringValue(payload.weatherNotes),
+    additionalNotes: stringValue(payload.additionalNotes),
+    distribution: stringValue(payload.distribution),
+    footer: stringValue(payload.footer),
+    attachedAssetIds: normalizeList(payload.attachedAssetIds),
   };
 }
 
@@ -929,6 +987,15 @@ function createApp(options = {}) {
       const body = await readJsonBody(request);
       const settings = await store.updateSettings(body);
       return sendJson(response, 200, { settings });
+    }
+
+    if (pathname === "/api/callsheet" && method === "PUT") {
+      if (!canEditModule(auth.user, "callsheet")) {
+        return sendJson(response, 403, { error: "You do not have permission to edit the call sheet." });
+      }
+      const body = await readJsonBody(request);
+      const callsheet = await store.updateCallsheet(body);
+      return sendJson(response, 200, { callsheet });
     }
 
     if (pathname === "/api/admin/reset" && method === "POST") {

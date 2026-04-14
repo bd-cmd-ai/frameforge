@@ -250,6 +250,35 @@ a {
   border: 1px solid rgba(31, 39, 18, 0.08);
 }
 
+.attachment-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.attachment-option {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(31, 39, 18, 0.08);
+}
+
+.attachment-option input {
+  margin-top: 4px;
+}
+
+.attachment-option span {
+  display: grid;
+  gap: 4px;
+}
+
+.attachment-option small {
+  color: var(--muted);
+}
+
 .button,
 .button-secondary,
 .button-ghost,
@@ -583,12 +612,17 @@ a {
 .metric-grid,
 .grid-two,
 .grid-three,
-.board-grid {
+.board-grid,
+.callsheet-stats {
   display: grid;
   gap: 16px;
 }
 
 .metric-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.callsheet-stats {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
@@ -936,6 +970,7 @@ a {
   .grid-two,
   .grid-three,
   .board-grid,
+  .callsheet-stats,
   .kanban,
   .auth-card {
     grid-template-columns: 1fr;
@@ -961,7 +996,8 @@ a {
   .form-grid.two,
   .project-meta,
   .strip,
-  .permission-grid {
+  .permission-grid,
+  .attachment-grid {
     grid-template-columns: 1fr;
   }
 

@@ -25,6 +25,7 @@ test("store bootstraps from seed and supports CRUD operations", async () => {
   const initial = store.getPublicState();
   assert.equal(initial.project.title, "Midnight Sun");
   assert.equal(initial.settings.currency, "EUR");
+  assert.equal(initial.callsheet.status, "Draft");
   assert.ok(initial.schedule.length > 0);
 
   const created = await store.createItem("tasks", {
@@ -102,10 +103,14 @@ test("store can bootstrap runtime data from a tracked seed file and reset back t
   await store.updateSettings({ studioName: "Local Studio", currency: "GBP" });
   assert.equal(store.getPublicState().settings.studioName, "Local Studio");
   assert.equal(store.getPublicState().settings.currency, "GBP");
+  await store.updateCallsheet({ status: "Published", crewCall: "05:45" });
+  assert.equal(store.getPublicState().callsheet.status, "Published");
+  assert.equal(store.getPublicState().callsheet.crewCall, "05:45");
 
   await store.reset();
   assert.equal(store.getPublicState().project.title, "Seed Project");
   assert.equal(store.getPublicState().settings.currency, "EUR");
+  assert.equal(store.getPublicState().callsheet.status, "Draft");
 });
 test("sanitizeCollectionItem normalizes lists and numbers", () => {
   const schedule = sanitizeCollectionItem("schedule", {
