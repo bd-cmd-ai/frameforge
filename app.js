@@ -127,8 +127,8 @@ function renderAuth() {
               <div class="muted" style="color: rgba(255,247,239,0.72)">Film Production Operating System</div>
             </div>
           </div>
-          <div class="eyebrow" style="margin-top: 28px">Full-stack demo</div>
-          <h1>Real backend, real persistence, real CRUD.</h1>
+          <div class="eyebrow" style="margin-top: 28px">Production workspace</div>
+          <h1>Production control, without the chaos.</h1>
           <p>
             This build now runs on a Node API with disk persistence, authenticated sessions, editable project data,
             schedule management, scene breakdowns, contacts, tasks, budget lines, and production assets.
@@ -136,13 +136,13 @@ function renderAuth() {
           <div class="auth-stats">
             <div class="auth-stat"><strong>API-backed</strong><span>Node server + JSON database on disk.</span></div>
             <div class="auth-stat"><strong>Studio workflow</strong><span>Project, stripboard, call sheet, breakdown, crew, tasks, budget, assets.</span></div>
-            <div class="auth-stat"><strong>Demo accounts</strong><span>Producer and 1st AD access with the same demo password.</span></div>
+            <div class="auth-stat"><strong>Access control</strong><span>Google sign-in plus role-based permissions for every module.</span></div>
           </div>
         </div>
         <div class="auth-form">
           <div>
             <h2>Sign in</h2>
-            <p>Use Google if your email is already in Team & Access, or fall back to seeded local credentials.</p>
+            <p>Use Google if your email is already in Team & Access, or sign in with your assigned email and password.</p>
           </div>
           ${state.error ? `<div class="flash error">${escapeHtml(state.error)}</div>` : ""}
           <div id="google-auth-slot"></div>
@@ -156,14 +156,6 @@ function renderAuth() {
             <input class="input" name="password" type="password" placeholder="Password" required />
             <button class="button" type="submit">Enter production office</button>
           </form>
-          <div class="demo-row">
-            <button class="chip-button" data-demo-login="producer@frameforge.app">Producer login</button>
-            <button class="chip-button" data-demo-login="ad@frameforge.app">1st AD login</button>
-            <button class="chip-button" data-demo-login="viewer@frameforge.app">Viewer login</button>
-          </div>
-          <div class="demo-note">
-            Demo password for both accounts: <strong>demo123</strong>
-          </div>
         </div>
       </section>
     </div>
@@ -1153,7 +1145,7 @@ function handleInput(event) {
 }
 
 async function handleClick(event) {
-  const trigger = event.target.closest("[data-action], [data-nav], [data-demo-login]");
+  const trigger = event.target.closest("[data-action], [data-nav]");
   if (!trigger) {
     return;
   }
@@ -1163,11 +1155,6 @@ async function handleClick(event) {
     state.flash = "";
     state.error = "";
     render();
-    return;
-  }
-
-  if (trigger.dataset.demoLogin) {
-    await performLogin(trigger.dataset.demoLogin, "demo123");
     return;
   }
 
