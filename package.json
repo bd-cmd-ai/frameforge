@@ -1,0 +1,11 @@
+{
+  "name": "frameforge-production-os",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A polished film production management app starter inspired by StudioBinder-style workflows.",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "node --test"
+  }
+}
