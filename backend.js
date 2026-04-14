@@ -261,7 +261,11 @@ const DEFAULT_DB = {
   ],
 };
 
-function createStore(dataFile) {
+function createStore(options = {}) {
+  const resolvedOptions = typeof options === "string" ? { dataFile: options } : options;
+  const dataFile = resolvedOptions.dataFile;
+  const seedFile = resolvedOptions.seedFile || null;
+  const defaultData = resolvedOptions.defaultData || DEFAULT_DB;
   let cache = null;
   let saveQueue = Promise.resolve();
 
@@ -276,7 +280,7 @@ function createStore(dataFile) {
         throw error;
       }
 
-      cache = structuredClone(DEFAULT_DB);
+      cache = await loadSeedState();
       await persist();
     }
   }
@@ -306,9 +310,24 @@ function createStore(dataFile) {
   }
 
   async function reset() {
-    cache = structuredClone(DEFAULT_DB);
+    cache = await loadSeedState();
     await persist();
     return getPublicState();
+  }
+
+  async function loadSeedState() {
+    if (seedFile) {
+      try {
+        const raw = await fs.readFile(seedFile, "utf8");
+        return normalizeDb(JSON.parse(raw));
+      } catch (error) {
+        if (error.code !== "ENOENT") {
+          throw error;
+        }
+      }
+    }
+
+    return structuredClone(defaultData);
   }
 
   function getPublicState() {
@@ -677,10 +696,11 @@ function canEditModule(user, moduleKey) {
 
 function createApp(options = {}) {
   const rootDir = options.rootDir || __dirname;
-  const dataFile = options.dataFile || path.join(rootDir, "data", "production-db.json");
+  const dataFile = options.dataFile || path.join(rootDir, "data", "production-db.local.json");
+  const seedFile = options.seedFile || path.join(rootDir, "data", "production-db.json");
   const googleClientId = options.googleClientId || process.env.GOOGLE_CLIENT_ID || "";
   const sessions = new Map();
-  const store = createStore(dataFile);
+  const store = createStore({ dataFile, seedFile });
 
   async function init() {
     await store.init();

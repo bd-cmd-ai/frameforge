@@ -12,6 +12,8 @@ async function start() {
   const app = createApp({
     rootDir: __dirname,
     googleClientId: process.env.GOOGLE_CLIENT_ID || "",
+    dataFile: process.env.DATA_FILE || path.join(__dirname, "data", "production-db.local.json"),
+    seedFile: process.env.SEED_FILE || path.join(__dirname, "data", "production-db.json"),
   });
   await app.init();
 

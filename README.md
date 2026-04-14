@@ -3,7 +3,8 @@
 FrameForge is now a real self-contained full-stack film production app:
 
 - Node HTTP backend with authenticated JSON API
-- disk-persisted JSON database in [data/production-db.json](/Users/bojch/Documents/CODEX/data/production-db.json)
+- seeded demo database in [data/production-db.json](/Users/bojch/Documents/CODEX/data/production-db.json)
+- local runtime database in `data/production-db.local.json` (auto-created and git-ignored)
 - Google sign-in support for invited team emails
 - login flow with demo accounts
 - team directory with user creation and permission assignment
@@ -46,6 +47,15 @@ Then open:
 
 The backend verifies the Google ID token and only allows login when the email already exists on the project team.
 
+## Data Model
+
+- `data/production-db.json` stays in git as the clean demo seed
+- `data/production-db.local.json` is created automatically on first run
+- all runtime edits, Google-linked users, and local team changes are written only to the `.local` file
+- `Reset demo data` restores the local runtime file from the tracked seed file
+
+This keeps the GitHub repo safe to publish while still letting your local app hold real working data.
+
 ## GitHub Ready
 
 I also prepared the project for a GitHub-hosted workflow:
@@ -65,7 +75,7 @@ If you want, the next step can be a deployment pass for Render, Railway, Fly.io,
 ## Notes
 
 - No external runtime dependencies are required.
-- Data persists between runs because writes go to [data/production-db.json](/Users/bojch/Documents/CODEX/data/production-db.json).
-- `Reset demo data` restores the seeded production database.
+- Data persists between runs because writes go to `data/production-db.local.json`.
+- `Reset demo data` restores the local runtime database from [data/production-db.json](/Users/bojch/Documents/CODEX/data/production-db.json).
 - Producers/admins have full access by default; viewers and team members can be assigned module-by-module view/edit rights from the `Team & Access` screen.
 - Permissions now support `no access`, `view`, and `edit`.

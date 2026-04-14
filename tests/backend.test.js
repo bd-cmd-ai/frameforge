@@ -48,6 +48,59 @@ test("store bootstraps from seed and supports CRUD operations", async () => {
   assert.equal(stateAfterDelete.tasks.some((item) => item.id === created.id), false);
 });
 
+test("store can bootstrap runtime data from a tracked seed file and reset back to it", async () => {
+  const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "frameforge-seed-"));
+  const seedFile = path.join(tempRoot, "production-db.json");
+  const runtimeFile = path.join(tempRoot, "production-db.local.json");
+
+  await fs.writeFile(
+    seedFile,
+    JSON.stringify(
+      {
+        project: {
+          title: "Seed Project",
+        },
+        users: [
+          {
+            id: "seed-user",
+            name: "Seed Producer",
+            email: "seed@frameforge.app",
+            password: "demo123",
+            role: "Producer",
+            title: "Producer",
+            department: "Production",
+            access: {
+              project: "edit",
+              schedule: "edit",
+              scenes: "edit",
+              callsheet: "edit",
+              contacts: "edit",
+              tasks: "edit",
+              budget: "edit",
+              assets: "edit",
+              team: "edit",
+            },
+          },
+        ],
+      },
+      null,
+      2
+    )
+  );
+
+  const store = createStore({ dataFile: runtimeFile, seedFile });
+  await store.init();
+
+  const initial = store.getPublicState();
+  assert.equal(initial.project.title, "Seed Project");
+
+  await store.updateProject({ title: "Local Override" });
+  assert.equal(store.getPublicState().project.title, "Local Override");
+
+  await store.reset();
+  assert.equal(store.getPublicState().project.title, "Seed Project");
+});
+
 test("sanitizeCollectionItem normalizes lists and numbers", () => {
   const schedule = sanitizeCollectionItem("schedule", {
     day: "Day 1",
