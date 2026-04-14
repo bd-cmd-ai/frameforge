@@ -698,6 +698,9 @@ function createApp(options = {}) {
   const dataFile = options.dataFile || path.join(rootDir, "data", "production-db.local.json");
   const seedFile = options.seedFile || path.join(rootDir, "data", "production-db.json");
   const googleClientId = options.googleClientId || process.env.GOOGLE_CLIENT_ID || "";
+  const bootstrapAdminEmails = normalizeEmailList(
+    options.bootstrapAdminEmails || process.env.BOOTSTRAP_ADMIN_EMAILS || ""
+  );
   const sessions = new Map();
   const store = createStore({ dataFile, seedFile });
 
@@ -766,6 +769,19 @@ function createApp(options = {}) {
       }
 
       let matchedUser = store.findUserByGoogleSubject(claims.sub) || store.findUserByEmail(claims.email);
+      if (!matchedUser && bootstrapAdminEmails.includes(String(claims.email).toLowerCase())) {
+        matchedUser = await store.createUser({
+          name: claims.name || claims.email.split("@")[0],
+          email: claims.email,
+          password: crypto.randomUUID(),
+          role: "Producer",
+          title: "Producer",
+          department: "Production",
+          access: createAccess("edit"),
+          googleSubject: claims.sub,
+        });
+      }
+
       if (!matchedUser) {
         return sendJson(response, 403, {
           error: "This Google account is not on the project team yet. Add the user in Team & Access first.",
@@ -1004,6 +1020,17 @@ function readJsonBody(request) {
   });
 }
 
+function normalizeEmailList(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim().toLowerCase()).filter(Boolean);
+  }
+
+  return String(value)
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 module.exports = {
   COLLECTIONS,
   MODULE_KEYS,
@@ -1015,6 +1042,7 @@ module.exports = {
   createStore,
   normalizeDb,
   normalizeAccess,
+  normalizeEmailList,
   buildDashboard,
   sanitizeCollectionItem,
   sanitizeUser,

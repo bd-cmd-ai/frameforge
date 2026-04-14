@@ -12,6 +12,7 @@ const {
   canEditModule,
   canViewModule,
   normalizeAccess,
+  normalizeEmailList,
 } = require("../backend");
 
 test("store bootstraps from seed and supports CRUD operations", async () => {
@@ -166,4 +167,11 @@ test("normalizeAccess supports no-access states", () => {
   assert.equal(access.budget, "none");
   assert.equal(access.assets, "view");
   assert.equal(access.tasks, "edit");
+});
+
+test("normalizeEmailList parses comma separated bootstrap emails", () => {
+  assert.deepEqual(normalizeEmailList(" owner@example.com,BOJAN.DOVRTEL@GMAIL.COM "), [
+    "owner@example.com",
+    "bojan.dovrtel@gmail.com",
+  ]);
 });

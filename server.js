@@ -14,6 +14,7 @@ async function start() {
     googleClientId: process.env.GOOGLE_CLIENT_ID || "",
     dataFile: process.env.DATA_FILE || path.join(__dirname, "data", "production-db.local.json"),
     seedFile: process.env.SEED_FILE || path.join(__dirname, "data", "production-db.json"),
+    bootstrapAdminEmails: process.env.BOOTSTRAP_ADMIN_EMAILS || "",
   });
   await app.init();
 
