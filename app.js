@@ -45,6 +45,7 @@ const state = {
   data: null,
   currentView: "overview",
   search: "",
+  notificationsOpen: false,
   loading: true,
   flash: "",
   error: "",
@@ -170,6 +171,8 @@ function renderApp() {
   const { project, dashboard, settings } = state.data;
   const viewTitle = navItems.find(([key]) => key === state.currentView)?.[1] || "Overview";
   const visibleNav = navItems.filter(([key]) => canViewModule(key));
+  const notifications = deriveNotifications(state.data);
+  const searchResults = deriveGlobalSearchResults(state.data, state.search);
 
   return `
     <div class="screen app-shell">
@@ -227,13 +230,19 @@ function renderApp() {
           </div>
           <div class="header-actions">
             <label class="search">
-              <input id="search-input" type="search" value="${escapeAttribute(state.search)}" placeholder="Search scenes, crew, tasks, assets..." />
+              <input id="search-input" type="search" value="${escapeAttribute(state.search)}" placeholder="Global search across scenes, crew, tasks, docs, budget..." />
             </label>
+            <button class="button-secondary notification-button" type="button" data-action="toggle-notifications">
+              Alerts
+              ${notifications.length ? `<span class="notification-badge">${notifications.length}</span>` : ""}
+            </button>
             ${canViewModule("callsheet") ? `<button class="button" data-nav="callsheet">Today's call sheet</button>` : ""}
           </div>
         </header>
         ${state.flash ? `<div class="flash">${escapeHtml(state.flash)}</div>` : ""}
         ${state.error ? `<div class="flash error">${escapeHtml(state.error)}</div>` : ""}
+        ${state.search ? renderSearchResultsPanel(searchResults) : ""}
+        ${state.notificationsOpen ? renderNotificationsPanel(notifications) : ""}
         ${renderView()}
       </main>
     </div>
@@ -271,6 +280,78 @@ function renderView() {
     default:
       return `<section class="content"><div class="empty">Unknown view.</div></section>`;
   }
+}
+
+function renderSearchResultsPanel(results) {
+  return `
+    <section class="search-panel">
+      <div class="section-head">
+        <div class="section-copy">
+          <h3>Global search</h3>
+          <p>${results.length ? `${results.length} results across the production workspace.` : "No matches found across the workspace."}</p>
+        </div>
+      </div>
+      <div class="record-list">
+        ${
+          results.length
+            ? results.map(renderSearchResultCard).join("")
+            : `<div class="empty">Try a scene code, team member, asset tag, task owner, budget category, or call sheet term.</div>`
+        }
+      </div>
+    </section>
+  `;
+}
+
+function renderNotificationsPanel(notifications) {
+  return `
+    <section class="notifications-panel">
+      <div class="section-head">
+        <div class="section-copy">
+          <h3>Notifications</h3>
+          <p>${notifications.length ? "Operational signals that need attention." : "No urgent notifications right now."}</p>
+        </div>
+      </div>
+      <div class="record-list">
+        ${
+          notifications.length
+            ? notifications.map(renderNotificationCard).join("")
+            : `<div class="empty">You're clear for now.</div>`
+        }
+      </div>
+    </section>
+  `;
+}
+
+function renderSearchResultCard(result) {
+  return `
+    <button class="search-result-card" type="button" data-search-result="1" data-view="${escapeAttribute(result.view)}" data-collection="${escapeAttribute(result.collection || "")}" data-id="${escapeAttribute(result.id || "")}">
+      <div class="record-footer">
+        <div class="legend">
+          <span class="pill">${escapeHtml(result.module)}</span>
+          ${result.status ? `<span class="${workflowStatusClass(result.status)}">${escapeHtml(result.status)}</span>` : ""}
+        </div>
+        <span class="muted">${escapeHtml(result.meta)}</span>
+      </div>
+      <strong>${escapeHtml(result.title)}</strong>
+      <span>${escapeHtml(result.summary)}</span>
+    </button>
+  `;
+}
+
+function renderNotificationCard(item) {
+  return `
+    <button class="notification-card" type="button" data-search-result="1" data-view="${escapeAttribute(item.view)}" data-collection="${escapeAttribute(item.collection || "")}" data-id="${escapeAttribute(item.id || "")}">
+      <div class="record-footer">
+        <div class="legend">
+          <span class="${workflowStatusClass(item.level)}">${escapeHtml(item.levelLabel)}</span>
+          <span class="pill">${escapeHtml(item.module)}</span>
+        </div>
+        ${item.when ? `<span class="muted">${escapeHtml(item.when)}</span>` : ""}
+      </div>
+      <strong>${escapeHtml(item.title)}</strong>
+      <span>${escapeHtml(item.message)}</span>
+    </button>
+  `;
 }
 
 function renderOverview() {
@@ -1481,6 +1562,9 @@ function renderIconActions(collection, id) {
 function handleInput(event) {
   if (event.target.id === "search-input") {
     state.search = event.target.value.trim().toLowerCase();
+    if (state.search) {
+      state.notificationsOpen = false;
+    }
     render();
     return;
   }
@@ -1497,13 +1581,14 @@ function handleInput(event) {
 }
 
 async function handleClick(event) {
-  const trigger = event.target.closest("[data-action], [data-nav], [data-preview-asset]");
+  const trigger = event.target.closest("[data-action], [data-nav], [data-preview-asset], [data-search-result]");
   if (!trigger) {
     return;
   }
 
   if (trigger.dataset.nav) {
     state.currentView = trigger.dataset.nav;
+    state.notificationsOpen = false;
     state.flash = "";
     state.error = "";
     render();
@@ -1512,6 +1597,19 @@ async function handleClick(event) {
 
   if (trigger.dataset.previewAsset) {
     state.assetPreviewId = trigger.dataset.previewAsset;
+    state.flash = "";
+    state.error = "";
+    render();
+    return;
+  }
+
+  if (trigger.dataset.searchResult) {
+    state.currentView = trigger.dataset.view || "overview";
+    if (trigger.dataset.collection === "assets" && trigger.dataset.id) {
+      state.assetPreviewId = trigger.dataset.id;
+    }
+    state.search = "";
+    state.notificationsOpen = false;
     state.flash = "";
     state.error = "";
     render();
@@ -1536,6 +1634,12 @@ async function handleClick(event) {
       state.data.project = response.project;
       state.flash = "Weather and location context refreshed.";
     });
+    return;
+  }
+
+  if (action === "toggle-notifications") {
+    state.notificationsOpen = !state.notificationsOpen;
+    render();
     return;
   }
 
@@ -2007,6 +2111,235 @@ function computeDashboard(data) {
   };
 }
 
+function deriveGlobalSearchResults(data, query) {
+  const needle = String(query || "").trim().toLowerCase();
+  if (!needle) return [];
+
+  const results = [];
+  const push = (entry) => {
+    if (results.length < 12) {
+      results.push(entry);
+    }
+  };
+  const matches = (...parts) => parts.some((part) => String(part || "").toLowerCase().includes(needle));
+
+  if (canViewModule("project") && matches(data.project.title, data.project.tagline, data.project.director, data.project.producer, data.project.location)) {
+    push({
+      view: "project",
+      module: "Project",
+      title: data.project.title,
+      summary: `${data.project.tagline || "Project profile"} · ${data.project.locationLabel || data.project.location || "Location TBD"}`,
+      meta: data.project.status || "Project",
+      status: "",
+    });
+  }
+
+  if (canViewModule("settings") && matches(data.settings.studioName, data.settings.companyName, data.settings.defaultBasecamp, data.settings.emergencyHospital, data.settings.timezone)) {
+    push({
+      view: "settings",
+      module: "Global Settings",
+      title: data.settings.studioName || "Studio defaults",
+      summary: `${data.settings.companyName || "Studio"} · ${data.settings.currency || "EUR"} · ${data.settings.timezone || "Timezone TBD"}`,
+      meta: data.settings.locale || "Locale",
+      status: "",
+    });
+  }
+
+  if (canViewModule("callsheet") && matches(data.callsheet.status, data.callsheet.unit, data.callsheet.locationDetails, data.callsheet.distribution, data.callsheet.additionalNotes, data.callsheet.sceneCodes?.join(", "))) {
+    push({
+      view: "callsheet",
+      module: "Call Sheet",
+      title: `${data.callsheet.unit || "Main Unit"} · ${formatDate(data.callsheet.shootDate)}`,
+      summary: `${data.callsheet.locationDetails || "Location TBD"} · scenes ${String(data.callsheet.sceneCodes || []).join(", ") || "TBD"}`,
+      meta: data.callsheet.status || "Draft",
+      status: data.callsheet.status || "Draft",
+    });
+  }
+
+  if (canViewModule("schedule")) {
+    data.schedule
+      .filter((item) => matches(item.day, item.location, item.notes, item.scenes?.join(", "), item.status))
+      .slice(0, 3)
+      .forEach((item) => push({
+        id: item.id,
+        collection: "schedule",
+        view: "schedule",
+        module: "Schedule",
+        title: `${item.day} · ${formatDate(item.date)}`,
+        summary: `${item.location} · call ${item.callTime}`,
+        meta: item.scenes.join(", "),
+        status: humanizeStatus(item.status),
+      }));
+  }
+
+  if (canViewModule("scenes")) {
+    data.scenes
+      .filter((item) => matches(item.code, item.title, item.location, item.cast, item.elements?.join(", ")))
+      .slice(0, 3)
+      .forEach((item) => push({
+        id: item.id,
+        collection: "scenes",
+        view: "breakdown",
+        module: "Breakdown",
+        title: `${item.code} · ${item.title}`,
+        summary: `${item.location} · ${item.setup}`,
+        meta: item.cast,
+        status: "",
+      }));
+  }
+
+  if (canViewModule("contacts")) {
+    data.contacts
+      .filter((item) => matches(item.name, item.role, item.dept, item.phone, item.email))
+      .slice(0, 3)
+      .forEach((item) => push({
+        id: item.id,
+        collection: "contacts",
+        view: "contacts",
+        module: "Contacts",
+        title: item.name,
+        summary: `${item.role} · ${item.phone}`,
+        meta: item.dept || "Contact",
+        status: "",
+      }));
+  }
+
+  if (canViewModule("tasks")) {
+    data.tasks
+      .filter((item) => matches(item.title, item.owner, item.priority, item.status, item.due))
+      .slice(0, 3)
+      .forEach((item) => push({
+        id: item.id,
+        collection: "tasks",
+        view: "tasks",
+        module: "Tasks",
+        title: item.title,
+        summary: `${item.owner} · due ${formatDate(item.due)}`,
+        meta: item.priority,
+        status: item.status === "Done" ? "Approved" : item.status === "In Progress" ? "In review" : "Draft",
+      }));
+  }
+
+  if (canViewModule("budget")) {
+    data.budget
+      .filter((item) => matches(item.category, item.estimated, item.actual))
+      .slice(0, 3)
+      .forEach((item) => push({
+        id: item.id,
+        collection: "budget",
+        view: "budget",
+        module: "Budget",
+        title: item.category,
+        summary: `Estimated ${money(item.estimated)} · Actual ${money(item.actual)}`,
+        meta: formatCurrencyDelta(Number(item.actual) - Number(item.estimated)),
+        status: "",
+      }));
+  }
+
+  if (canViewModule("assets")) {
+    data.assets
+      .filter((item) => matches(item.name, item.type, item.owner, item.tag, item.status, item.version, item.approvalNotes))
+      .slice(0, 4)
+      .forEach((item) => push({
+        id: item.id,
+        collection: "assets",
+        view: "assets",
+        module: "Assets",
+        title: item.name,
+        summary: `${item.type} · ${item.owner} · ${item.tag || "Document"}`,
+        meta: item.version ? `v${item.version}` : "Asset",
+        status: item.status || "Draft",
+      }));
+  }
+
+  if (canViewModule("team")) {
+    data.users
+      .filter((item) => matches(item.name, item.email, item.role, item.department, item.title))
+      .slice(0, 3)
+      .forEach((item) => push({
+        id: item.id,
+        collection: "users",
+        view: "team",
+        module: "Team & Access",
+        title: item.name,
+        summary: `${item.role} · ${item.email}`,
+        meta: item.department || "Team",
+        status: "",
+      }));
+  }
+
+  return results;
+}
+
+function deriveNotifications(data) {
+  const items = [];
+  const today = new Date();
+
+  if (canViewModule("callsheet") && data.callsheet?.status === "In review") {
+    items.push({
+      view: "callsheet",
+      module: "Call Sheet",
+      title: "Call sheet is waiting on approval",
+      message: `${data.callsheet.unit || "Main Unit"} for ${formatDate(data.callsheet.shootDate)} is marked In review.`,
+      level: "In review",
+      levelLabel: "Review",
+      when: data.callsheet.lastEditedAt ? formatDateTime(data.callsheet.lastEditedAt) : "",
+    });
+  }
+
+  if (canViewModule("assets")) {
+    data.assets
+      .filter((item) => item.status === "In review")
+      .slice(0, 3)
+      .forEach((item) =>
+        items.push({
+          view: "assets",
+          collection: "assets",
+          id: item.id,
+          module: "Assets",
+          title: `${item.name} needs approval`,
+          message: `${item.type} · ${item.tag || "Document"} is currently in review.`,
+          level: "In review",
+          levelLabel: "Review",
+          when: item.lastEditedAt ? formatDateTime(item.lastEditedAt) : "",
+        })
+      );
+  }
+
+  if (canViewModule("tasks")) {
+    data.tasks
+      .filter((item) => item.status !== "Done" && item.due && new Date(item.due) < today)
+      .slice(0, 3)
+      .forEach((item) =>
+        items.push({
+          view: "tasks",
+          collection: "tasks",
+          id: item.id,
+          module: "Tasks",
+          title: `${item.title} is overdue`,
+          message: `${item.owner} was due ${formatDate(item.due)}.`,
+          level: "danger",
+          levelLabel: "Overdue",
+          when: formatDate(item.due),
+        })
+      );
+  }
+
+  if (canViewModule("callsheet") && data.callsheet?.status === "Published") {
+    items.push({
+      view: "callsheet",
+      module: "Call Sheet",
+      title: "Latest call sheet is published",
+      message: `${data.callsheet.unit || "Main Unit"} is ready to distribute.`,
+      level: "Approved",
+      levelLabel: "Published",
+      when: data.callsheet.publishedAt ? formatDateTime(data.callsheet.publishedAt) : "",
+    });
+  }
+
+  return items.slice(0, 6);
+}
+
 function resolveCallsheet() {
   const raw = state.data.callsheet || {};
   const project = state.data.project || {};
@@ -2191,6 +2524,9 @@ function taskStatusToBadge(status) {
 }
 
 function workflowStatusClass(status) {
+  if (status === "danger") return "status danger";
+  if (status === "warning") return "status warning";
+  if (status === "success") return "status success";
   if (status === "Approved" || status === "Published") return "status success";
   if (status === "In review") return "status warning";
   if (status === "Archived") return "status";
