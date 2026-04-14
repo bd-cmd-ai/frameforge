@@ -1,13 +1,13 @@
 {
   "users": [
     {
-      "id": "user-07aedeb4-a1c4-4f04-947a-b0d5a5eaa923",
-      "name": "Bojan Dovrtel",
-      "email": "bojan.dovrtel@gmail.com",
+      "id": "user-prod-1",
+      "name": "Miles Ortega",
+      "email": "producer@frameforge.app",
       "password": "demo123",
-      "googleSubject": "102974074017508862165",
+      "googleSubject": "",
       "role": "Producer",
-      "title": "Producer",
+      "title": "Executive Producer",
       "department": "Production",
       "access": {
         "project": "edit",
@@ -19,6 +19,48 @@
         "budget": "edit",
         "assets": "edit",
         "team": "edit"
+      }
+    },
+    {
+      "id": "user-ad-1",
+      "name": "Petra Kranjc",
+      "email": "ad@frameforge.app",
+      "password": "demo123",
+      "googleSubject": "",
+      "role": "1st AD",
+      "title": "1st Assistant Director",
+      "department": "AD",
+      "access": {
+        "project": "view",
+        "schedule": "edit",
+        "scenes": "edit",
+        "callsheet": "edit",
+        "contacts": "edit",
+        "tasks": "edit",
+        "budget": "none",
+        "assets": "view",
+        "team": "none"
+      }
+    },
+    {
+      "id": "user-view-1",
+      "name": "Lena Fischer",
+      "email": "viewer@frameforge.app",
+      "password": "demo123",
+      "googleSubject": "",
+      "role": "Viewer",
+      "title": "Financier",
+      "department": "Stakeholders",
+      "access": {
+        "project": "view",
+        "schedule": "view",
+        "scenes": "view",
+        "callsheet": "view",
+        "contacts": "none",
+        "tasks": "none",
+        "budget": "none",
+        "assets": "view",
+        "team": "none"
       }
     }
   ],
