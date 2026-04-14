@@ -25,12 +25,13 @@ let googleCertCache = {
 };
 
 const COLLECTIONS = new Set(["schedule", "scenes", "contacts", "tasks", "budget", "assets"]);
-const MODULE_KEYS = ["project", "schedule", "scenes", "callsheet", "contacts", "tasks", "budget", "assets", "team"];
+const MODULE_KEYS = ["project", "settings", "schedule", "scenes", "callsheet", "contacts", "tasks", "budget", "assets", "team"];
 const ROLE_TEMPLATES = {
   Producer: createAccess("edit"),
   Admin: createAccess("edit"),
   Viewer: {
     project: "view",
+    settings: "none",
     schedule: "view",
     scenes: "view",
     callsheet: "view",
@@ -42,6 +43,7 @@ const ROLE_TEMPLATES = {
   },
   Crew: {
     project: "view",
+    settings: "none",
     schedule: "edit",
     scenes: "edit",
     callsheet: "view",
@@ -53,6 +55,7 @@ const ROLE_TEMPLATES = {
   },
   "1st AD": {
     project: "view",
+    settings: "none",
     schedule: "edit",
     scenes: "edit",
     callsheet: "edit",
@@ -120,6 +123,19 @@ const DEFAULT_DB = {
     sunset: "",
     currency: "EUR",
     logline: "An Arctic investigator hunts a buried conspiracy before the midnight sun reveals the wrong truth.",
+  },
+  settings: {
+    studioName: "FrameForge",
+    companyName: "FrameForge Productions",
+    locale: "en-GB",
+    timezone: "Europe/Ljubljana",
+    currency: "EUR",
+    defaultBasecamp: "Ljubljana production office",
+    emergencyHospital: "University Medical Centre Ljubljana",
+    emergencyPhone: "+386 1 522 5050",
+    transportNotes: "Unit vans depart 45 minutes before crew call. Confirm seat allocations with the transport captain.",
+    parkingNotes: "Crew parking is assigned by department. Keep access lanes clear for tech vehicles and emergency services.",
+    callSheetFooter: "All departments check in on arrival, confirm safety briefing attendance, and escalate red flags immediately.",
   },
   schedule: [
     {
@@ -357,6 +373,7 @@ function createStore(options = {}) {
     const state = getState();
     return {
       project: structuredClone(state.project),
+      settings: structuredClone(state.settings),
       schedule: structuredClone(state.schedule),
       scenes: structuredClone(state.scenes),
       contacts: structuredClone(state.contacts),
@@ -372,6 +389,7 @@ function createStore(options = {}) {
     const state = getState();
     const filtered = {
       project: canViewModule(user, "project") ? structuredClone(state.project) : {},
+      settings: canViewModule(user, "settings") ? structuredClone(state.settings) : {},
       schedule: canViewModule(user, "schedule") ? structuredClone(state.schedule) : [],
       scenes: canViewModule(user, "scenes") ? structuredClone(state.scenes) : [],
       contacts: canViewModule(user, "contacts") ? structuredClone(state.contacts) : [],
@@ -483,6 +501,12 @@ function createStore(options = {}) {
     return structuredClone(cache.project);
   }
 
+  async function updateSettings(payload) {
+    cache.settings = { ...cache.settings, ...sanitizeSettings(payload) };
+    await persist();
+    return structuredClone(cache.settings);
+  }
+
   async function createItem(collection, payload) {
     const record = sanitizeCollectionItem(collection, payload, createId(collection));
     cache[collection].unshift(record);
@@ -526,6 +550,7 @@ function createStore(options = {}) {
     findUserByGoogleSubject,
     findUserById,
     updateProject,
+    updateSettings,
     createUser,
     updateUser,
     deleteUser,
@@ -543,6 +568,7 @@ function normalizeDb(raw) {
       ? source.users.map((entry) => sanitizeUser(entry, entry.id || createId("user")))
       : structuredClone(DEFAULT_DB.users),
     project: { ...DEFAULT_DB.project, ...(source.project || {}) },
+    settings: { ...DEFAULT_DB.settings, ...(source.settings || {}) },
     schedule: Array.isArray(source.schedule) ? source.schedule : structuredClone(DEFAULT_DB.schedule),
     scenes: Array.isArray(source.scenes) ? source.scenes : structuredClone(DEFAULT_DB.scenes),
     contacts: Array.isArray(source.contacts) ? source.contacts : structuredClone(DEFAULT_DB.contacts),
@@ -588,6 +614,22 @@ function sanitizeProject(payload) {
     sunset: stringValue(payload.sunset),
     currency: normalizeCurrency(payload.currency),
     logline: stringValue(payload.logline),
+  };
+}
+
+function sanitizeSettings(payload) {
+  return {
+    studioName: stringValue(payload.studioName),
+    companyName: stringValue(payload.companyName),
+    locale: normalizeLocale(payload.locale),
+    timezone: stringValue(payload.timezone) || "Europe/Ljubljana",
+    currency: normalizeCurrency(payload.currency),
+    defaultBasecamp: stringValue(payload.defaultBasecamp),
+    emergencyHospital: stringValue(payload.emergencyHospital),
+    emergencyPhone: stringValue(payload.emergencyPhone),
+    transportNotes: stringValue(payload.transportNotes),
+    parkingNotes: stringValue(payload.parkingNotes),
+    callSheetFooter: stringValue(payload.callSheetFooter),
   };
 }
 
@@ -688,6 +730,11 @@ function numberValue(value) {
 function normalizeCurrency(value) {
   const normalized = String(value || "").trim().toUpperCase();
   return ["EUR", "USD", "GBP"].includes(normalized) ? normalized : "EUR";
+}
+
+function normalizeLocale(value) {
+  const normalized = String(value || "").trim();
+  return ["sl-SI", "en-GB", "en-US"].includes(normalized) ? normalized : "en-GB";
 }
 
 function normalizeList(value) {
@@ -873,6 +920,15 @@ function createApp(options = {}) {
       const currentProject = store.getPublicState().project;
       const project = await store.updateProject(await deriveProjectContext(currentProject));
       return sendJson(response, 200, { project });
+    }
+
+    if (pathname === "/api/settings" && method === "PUT") {
+      if (!canEditModule(auth.user, "settings")) {
+        return sendJson(response, 403, { error: "You do not have permission to edit global settings." });
+      }
+      const body = await readJsonBody(request);
+      const settings = await store.updateSettings(body);
+      return sendJson(response, 200, { settings });
     }
 
     if (pathname === "/api/admin/reset" && method === "POST") {

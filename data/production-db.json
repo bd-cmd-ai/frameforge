@@ -11,6 +11,7 @@
       "department": "Production",
       "access": {
         "project": "edit",
+        "settings": "edit",
         "schedule": "edit",
         "scenes": "edit",
         "callsheet": "edit",
@@ -32,6 +33,7 @@
       "department": "AD",
       "access": {
         "project": "view",
+        "settings": "none",
         "schedule": "edit",
         "scenes": "edit",
         "callsheet": "edit",
@@ -53,6 +55,7 @@
       "department": "Stakeholders",
       "access": {
         "project": "view",
+        "settings": "none",
         "schedule": "view",
         "scenes": "view",
         "callsheet": "view",
@@ -76,6 +79,19 @@
     "weather": "8°C / light wind / overcast",
     "location": "Ljubljana Unit + Nordic exteriors",
     "logline": "An Arctic investigator hunts a buried conspiracy before the midnight sun reveals the wrong truth."
+  },
+  "settings": {
+    "studioName": "FrameForge",
+    "companyName": "FrameForge Productions",
+    "locale": "en-GB",
+    "timezone": "Europe/Ljubljana",
+    "currency": "EUR",
+    "defaultBasecamp": "Ljubljana production office",
+    "emergencyHospital": "University Medical Centre Ljubljana",
+    "emergencyPhone": "+386 1 522 5050",
+    "transportNotes": "Unit vans depart 45 minutes before crew call. Confirm seat allocations with the transport captain.",
+    "parkingNotes": "Crew parking is assigned by department. Keep access lanes clear for tech vehicles and emergency services.",
+    "callSheetFooter": "All departments check in on arrival, confirm safety briefing attendance, and escalate red flags immediately."
   },
   "schedule": [
     {

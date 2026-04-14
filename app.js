@@ -5,6 +5,7 @@ const runtimeConfig = window.frameForgeConfig || {};
 const navItems = [
   ["overview", "Overview"],
   ["project", "Project"],
+  ["settings", "Global Settings"],
   ["team", "Team & Access"],
   ["schedule", "Schedule"],
   ["breakdown", "Breakdown"],
@@ -27,6 +28,7 @@ const collectionLabels = {
 
 const permissionModules = [
   ["project", "Project"],
+  ["settings", "Global Settings"],
   ["schedule", "Schedule"],
   ["scenes", "Breakdown"],
   ["callsheet", "Call Sheet"],
@@ -165,7 +167,7 @@ function renderAuth() {
 }
 
 function renderApp() {
-  const { project, dashboard } = state.data;
+  const { project, dashboard, settings } = state.data;
   const viewTitle = navItems.find(([key]) => key === state.currentView)?.[1] || "Overview";
   const visibleNav = navItems.filter(([key]) => canViewModule(key));
 
@@ -176,8 +178,8 @@ function renderApp() {
           <div class="brand-row">
             <div class="brand-mark">FF</div>
             <div>
-              <strong>FrameForge</strong>
-              <div style="color: rgba(255,248,238,0.68)">Production OS</div>
+              <strong>${escapeHtml(settings.studioName || "FrameForge")}</strong>
+              <div style="color: rgba(255,248,238,0.68)">${escapeHtml(settings.companyName || "Production OS")}</div>
             </div>
           </div>
           <section class="project-card">
@@ -248,6 +250,8 @@ function renderView() {
       return renderOverview();
     case "project":
       return renderProjectView();
+    case "settings":
+      return renderSettingsView();
     case "team":
       return renderTeamView();
     case "schedule":
@@ -381,6 +385,7 @@ function renderOverview() {
 
 function renderProjectView() {
   const project = state.data.project;
+  const settings = state.data.settings;
   const canEdit = canEditModule("project");
   const resolvedLocation = project.locationLabel || project.location || "Location not set";
   return `
@@ -404,11 +409,11 @@ function renderProjectView() {
                   <input class="input" name="wrapDate" type="date" value="${escapeAttribute(project.wrapDate)}" required />
                   <input class="input" name="director" placeholder="Director" value="${escapeAttribute(project.director)}" required />
                   <input class="input" name="producer" placeholder="Producer" value="${escapeAttribute(project.producer)}" required />
-                  <select class="select" name="currency">
-                    ${["EUR", "USD", "GBP"]
-                      .map((currency) => `<option value="${currency}" ${currency === (project.currency || "EUR") ? "selected" : ""}>${currency}</option>`)
-                      .join("")}
-                  </select>
+                  <div class="callout">
+                    <strong>Global defaults</strong>
+                    <p style="margin-top: 10px;">Budget currency: ${escapeHtml(settings.currency || "EUR")}</p>
+                    <p style="margin-top: 8px;">App timezone: ${escapeHtml(settings.timezone || "Europe/Ljubljana")}</p>
+                  </div>
                   <div class="callout">
                     <strong>Live weather</strong>
                     <p style="margin-top: 10px;">${escapeHtml(project.weather || "Weather sync pending")}</p>
@@ -437,7 +442,77 @@ function renderProjectView() {
             <div class="list-item"><strong>${escapeHtml(project.director)} / ${escapeHtml(project.producer)}</strong><span>Leadership</span></div>
             <div class="list-item"><strong>${escapeHtml(resolvedLocation)}</strong><span>Base of operations</span></div>
             <div class="list-item"><strong>${escapeHtml(project.weather || "Weather sync pending")}</strong><span>Live weather</span></div>
-            <div class="list-item"><strong>${escapeHtml(project.currency || "EUR")}</strong><span>Budget currency</span></div>
+            <div class="list-item"><strong>${escapeHtml(settings.currency || "EUR")}</strong><span>Budget currency from global settings</span></div>
+          </div>
+        </article>
+      </section>
+    </section>
+  `;
+}
+
+function renderSettingsView() {
+  const settings = state.data.settings;
+  const canEdit = canEditModule("settings");
+
+  return `
+    <section class="content">
+      <section class="grid-two">
+        <article class="panel">
+          <div class="section-head">
+            <div class="section-copy">
+              <h3>Studio defaults</h3>
+              <p>Centralize branding, localization, and call sheet defaults across the whole app.</p>
+            </div>
+          </div>
+          ${
+            canEdit
+              ? `<form id="settings-form" class="form-grid two">
+                  <input class="input" name="studioName" placeholder="Studio name" value="${escapeAttribute(settings.studioName || "")}" required />
+                  <input class="input" name="companyName" placeholder="Company name" value="${escapeAttribute(settings.companyName || "")}" required />
+                  <select class="select" name="currency">
+                    ${["EUR", "USD", "GBP"]
+                      .map((currency) => `<option value="${currency}" ${currency === (settings.currency || "EUR") ? "selected" : ""}>${currency}</option>`)
+                      .join("")}
+                  </select>
+                  <select class="select" name="locale">
+                    ${[
+                      ["sl-SI", "Slovenian / Europe"],
+                      ["en-GB", "English / UK"],
+                      ["en-US", "English / US"],
+                    ]
+                      .map(([value, label]) => `<option value="${value}" ${value === (settings.locale || "en-GB") ? "selected" : ""}>${label}</option>`)
+                      .join("")}
+                  </select>
+                  <input class="input full" name="timezone" placeholder="Timezone" value="${escapeAttribute(settings.timezone || "")}" required />
+                  <input class="input full" name="defaultBasecamp" placeholder="Default basecamp / unit base" value="${escapeAttribute(settings.defaultBasecamp || "")}" />
+                  <input class="input" name="emergencyHospital" placeholder="Emergency hospital" value="${escapeAttribute(settings.emergencyHospital || "")}" />
+                  <input class="input" name="emergencyPhone" placeholder="Emergency phone" value="${escapeAttribute(settings.emergencyPhone || "")}" />
+                  <textarea class="textarea full" name="transportNotes" placeholder="Transport notes">${escapeHtml(settings.transportNotes || "")}</textarea>
+                  <textarea class="textarea full" name="parkingNotes" placeholder="Parking notes">${escapeHtml(settings.parkingNotes || "")}</textarea>
+                  <textarea class="textarea full" name="callSheetFooter" placeholder="Call sheet footer / standing notes">${escapeHtml(settings.callSheetFooter || "")}</textarea>
+                  <div class="button-row full">
+                    <button class="button" type="submit">Save global settings</button>
+                  </div>
+                </form>`
+              : renderReadOnlyCard("You can review global defaults, but only studio admins can change them.")
+          }
+        </article>
+        <article class="panel">
+          <div class="section-head">
+            <div class="section-copy">
+              <h3>Live impact</h3>
+              <p>These settings are already used by budgeting, dates, times, navigation branding, and call sheet defaults.</p>
+            </div>
+          </div>
+          <div class="list">
+            <div class="list-item"><strong>${escapeHtml(settings.studioName || "FrameForge")}</strong><span>Sidebar branding</span></div>
+            <div class="list-item"><strong>${escapeHtml(settings.companyName || "Production OS")}</strong><span>Studio identity</span></div>
+            <div class="list-item"><strong>${escapeHtml(settings.currency || "EUR")}</strong><span>Budget and dashboard currency</span></div>
+            <div class="list-item"><strong>${escapeHtml(settings.locale || "en-GB")}</strong><span>Date and number locale</span></div>
+            <div class="list-item"><strong>${escapeHtml(settings.timezone || "Europe/Ljubljana")}</strong><span>Display timezone</span></div>
+            <div class="list-item"><strong>${escapeHtml(settings.defaultBasecamp || state.data.project.locationLabel || state.data.project.location || "TBD")}</strong><span>Default basecamp</span></div>
+            <div class="list-item"><strong>${escapeHtml(settings.emergencyHospital || "TBD")}</strong><span>Emergency hospital</span></div>
+            <div class="list-item"><strong>${escapeHtml(settings.emergencyPhone || "TBD")}</strong><span>Emergency contact</span></div>
           </div>
         </article>
       </section>
@@ -612,8 +687,10 @@ function renderBreakdownView() {
 function renderCallsheetView() {
   const day = state.data.schedule[0];
   const project = state.data.project;
+  const settings = state.data.settings;
   const leads = state.data.contacts.slice(0, 4);
   const resolvedLocation = project.locationLabel || project.location || "Basecamp TBD";
+  const basecamp = settings.defaultBasecamp || resolvedLocation;
 
   return `
     <section class="content">
@@ -629,12 +706,12 @@ function renderCallsheetView() {
         <article class="hero-side panel">
           <div class="section-copy">
             <h3>Emergency & logistics</h3>
-            <p>Live location-aware context for the active shoot day.</p>
+            <p>Live location-aware context combined with studio-wide defaults.</p>
           </div>
           <div class="mini-list" style="margin-top: 18px;">
-            <div class="mini-item"><strong>Hospital</strong><span>University Medical Centre Ljubljana · +386 1 522 5050</span></div>
+            <div class="mini-item"><strong>Hospital</strong><span>${escapeHtml(settings.emergencyHospital || "TBD")} · ${escapeHtml(settings.emergencyPhone || "TBD")}</span></div>
             <div class="mini-item"><strong>Sunrise / Sunset</strong><span>${escapeHtml(formatTime(project.sunrise))} / ${escapeHtml(formatTime(project.sunset))}</span></div>
-            <div class="mini-item"><strong>Basecamp</strong><span>${escapeHtml(resolvedLocation)}</span></div>
+            <div class="mini-item"><strong>Basecamp</strong><span>${escapeHtml(basecamp)}</span></div>
           </div>
         </article>
       </div>
@@ -649,8 +726,11 @@ function renderCallsheetView() {
           </div>
           <div class="list">
             <div class="list-item"><strong>Logistics</strong><span>${escapeHtml(day?.notes || "No set notes yet.")}</span></div>
+            <div class="list-item"><strong>Transport</strong><span>${escapeHtml(settings.transportNotes || "Add default transport notes in Global Settings.")}</span></div>
+            <div class="list-item"><strong>Parking</strong><span>${escapeHtml(settings.parkingNotes || "Add default parking notes in Global Settings.")}</span></div>
             <div class="list-item"><strong>Director</strong><span>${escapeHtml(project.director)}</span></div>
             <div class="list-item"><strong>Producer</strong><span>${escapeHtml(project.producer)}</span></div>
+            <div class="list-item"><strong>Standing note</strong><span>${escapeHtml(settings.callSheetFooter || "Add your recurring footer in Global Settings.")}</span></div>
           </div>
         </section>
         <section class="panel">
@@ -1350,6 +1430,20 @@ async function handleSubmit(event) {
     return;
   }
 
+  if (form.id === "settings-form") {
+    event.preventDefault();
+    const payload = Object.fromEntries(new FormData(form).entries());
+    await mutate(async () => {
+      const response = await api("/settings", {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
+      state.data.settings = response.settings;
+      state.flash = "Global settings updated.";
+    });
+    return;
+  }
+
   if (form.id === "user-form") {
     event.preventDefault();
     const formData = new FormData(form);
@@ -1692,7 +1786,7 @@ function computeDashboard(data) {
 function formatDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "TBD";
-  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return date.toLocaleDateString(activeLocale(), { day: "numeric", month: "short", year: "numeric" });
 }
 
 function money(value) {
@@ -1704,16 +1798,28 @@ function money(value) {
 }
 
 function activeCurrency() {
-  return state.data?.project?.currency || "EUR";
+  return state.data?.settings?.currency || state.data?.project?.currency || "EUR";
+}
+
+function activeLocale() {
+  return state.data?.settings?.locale || currencyLocaleFallback(activeCurrency());
+}
+
+function activeTimezone() {
+  return state.data?.settings?.timezone || state.data?.project?.timezone || "Europe/Ljubljana";
 }
 
 function currencyLocale() {
+  return activeLocale();
+}
+
+function currencyLocaleFallback(currency) {
   const map = {
     EUR: "sl-SI",
     USD: "en-US",
     GBP: "en-GB",
   };
-  return map[activeCurrency()] || "sl-SI";
+  return map[currency] || "sl-SI";
 }
 
 function formatMetricValue(value) {
@@ -1729,21 +1835,23 @@ function formatCurrencyDelta(value) {
 function formatDateTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "not synced yet";
-  return date.toLocaleString("en-GB", {
+  return date.toLocaleString(activeLocale(), {
     day: "numeric",
     month: "short",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: activeTimezone(),
   });
 }
 
 function formatTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "TBD";
-  return date.toLocaleTimeString("en-GB", {
+  return date.toLocaleTimeString(activeLocale(), {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: activeTimezone(),
   });
 }
 
@@ -1832,6 +1940,7 @@ function defaultAccessForRole(role) {
     Admin: Object.fromEntries(permissionModules.map(([key]) => [key, "edit"])),
     Viewer: {
       project: "view",
+      settings: "none",
       schedule: "view",
       scenes: "view",
       callsheet: "view",
@@ -1843,6 +1952,7 @@ function defaultAccessForRole(role) {
     },
     Crew: {
       project: "view",
+      settings: "none",
       schedule: "edit",
       scenes: "edit",
       callsheet: "view",
@@ -1854,6 +1964,7 @@ function defaultAccessForRole(role) {
     },
     "1st AD": {
       project: "view",
+      settings: "none",
       schedule: "edit",
       scenes: "edit",
       callsheet: "edit",

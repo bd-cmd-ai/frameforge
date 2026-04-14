@@ -24,6 +24,7 @@ test("store bootstraps from seed and supports CRUD operations", async () => {
 
   const initial = store.getPublicState();
   assert.equal(initial.project.title, "Midnight Sun");
+  assert.equal(initial.settings.currency, "EUR");
   assert.ok(initial.schedule.length > 0);
 
   const created = await store.createItem("tasks", {
@@ -94,12 +95,17 @@ test("store can bootstrap runtime data from a tracked seed file and reset back t
 
   const initial = store.getPublicState();
   assert.equal(initial.project.title, "Seed Project");
+  assert.equal(initial.settings.currency, "EUR");
 
   await store.updateProject({ title: "Local Override" });
   assert.equal(store.getPublicState().project.title, "Local Override");
+  await store.updateSettings({ studioName: "Local Studio", currency: "GBP" });
+  assert.equal(store.getPublicState().settings.studioName, "Local Studio");
+  assert.equal(store.getPublicState().settings.currency, "GBP");
 
   await store.reset();
   assert.equal(store.getPublicState().project.title, "Seed Project");
+  assert.equal(store.getPublicState().settings.currency, "EUR");
 });
 test("sanitizeCollectionItem normalizes lists and numbers", () => {
   const schedule = sanitizeCollectionItem("schedule", {
@@ -154,11 +160,13 @@ test("user permissions support viewers and full-access producers", () => {
   );
 
   assert.equal(canViewModule(viewer, "budget"), false);
+  assert.equal(canViewModule(viewer, "settings"), false);
   assert.equal(canEditModule(viewer, "budget"), false);
   assert.equal(canEditModule(viewer, "team"), false);
   assert.equal(canViewModule(viewer, "contacts"), false);
   assert.equal(canViewModule(viewer, "schedule"), true);
   assert.equal(canEditModule(producer, "budget"), true);
+  assert.equal(canEditModule(producer, "settings"), true);
   assert.equal(canEditModule(producer, "team"), true);
 });
 
