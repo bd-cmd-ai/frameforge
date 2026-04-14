@@ -1,0 +1,243 @@
+{
+  "users": [
+    {
+      "id": "user-07aedeb4-a1c4-4f04-947a-b0d5a5eaa923",
+      "name": "Bojan Dovrtel",
+      "email": "bojan.dovrtel@gmail.com",
+      "password": "demo123",
+      "googleSubject": "102974074017508862165",
+      "role": "Producer",
+      "title": "Producer",
+      "department": "Production",
+      "access": {
+        "project": "edit",
+        "schedule": "edit",
+        "scenes": "edit",
+        "callsheet": "edit",
+        "contacts": "edit",
+        "tasks": "edit",
+        "budget": "edit",
+        "assets": "edit",
+        "team": "edit"
+      }
+    }
+  ],
+  "project": {
+    "id": "project-midnight-sun",
+    "title": "Midnight Sun",
+    "tagline": "Feature thriller balancing prep, principal photography, and post.",
+    "status": "Active shoot",
+    "startDate": "2026-05-12",
+    "wrapDate": "2026-07-02",
+    "director": "Nadia Verhoeven",
+    "producer": "Miles Ortega",
+    "weather": "8°C / light wind / overcast",
+    "location": "Ljubljana Unit + Nordic exteriors",
+    "logline": "An Arctic investigator hunts a buried conspiracy before the midnight sun reveals the wrong truth."
+  },
+  "schedule": [
+    {
+      "id": "day-12",
+      "day": "Day 12",
+      "date": "2026-05-27",
+      "location": "Warehouse Stage B",
+      "callTime": "06:00",
+      "notes": "Rain FX, car rig, stunt rehearsal at 08:00.",
+      "scenes": [
+        "24A",
+        "24B",
+        "25"
+      ],
+      "status": "shooting"
+    },
+    {
+      "id": "day-13",
+      "day": "Day 13",
+      "date": "2026-05-28",
+      "location": "Harbor Exterior",
+      "callTime": "05:30",
+      "notes": "Golden hour opening shot. Marine safety briefing required.",
+      "scenes": [
+        "32",
+        "33",
+        "33A"
+      ],
+      "status": "ready"
+    },
+    {
+      "id": "day-14",
+      "day": "Day 14",
+      "date": "2026-05-29",
+      "location": "Police Station Set",
+      "callTime": "07:15",
+      "notes": "Background talent heavy. Wardrobe continuity check on all principals.",
+      "scenes": [
+        "37",
+        "38",
+        "40"
+      ],
+      "status": "risk"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "scene-24A",
+      "code": "24A",
+      "title": "Mara corners the informant",
+      "location": "Warehouse Stage B",
+      "setup": "Interior / Night",
+      "pages": "2 1/8",
+      "cast": "Mara, Ilan, Guard",
+      "elements": [
+        "Hero prop weapon",
+        "Rain FX",
+        "Forklift picture vehicle"
+      ]
+    },
+    {
+      "id": "scene-32",
+      "code": "32",
+      "title": "Dawn pursuit on the pier",
+      "location": "Harbor Exterior",
+      "setup": "Exterior / Dawn",
+      "pages": "3 3/8",
+      "cast": "Mara, Jonas, Dock workers",
+      "elements": [
+        "Drone unit",
+        "Marine safety",
+        "Stunt runner",
+        "Smoke pots"
+      ]
+    },
+    {
+      "id": "scene-37",
+      "code": "37",
+      "title": "Interrogation room pivot",
+      "location": "Police Station Set",
+      "setup": "Interior / Day",
+      "pages": "5/8",
+      "cast": "Mara, Chief Edda",
+      "elements": [
+        "Two-camera setup",
+        "Hero files",
+        "Glass practical"
+      ]
+    }
+  ],
+  "contacts": [
+    {
+      "id": "contact-1",
+      "name": "Nadia Verhoeven",
+      "role": "Director",
+      "dept": "Direction",
+      "phone": "+31 20 555 0198",
+      "email": "nadia@frameforge.demo"
+    },
+    {
+      "id": "contact-2",
+      "name": "Miles Ortega",
+      "role": "Producer",
+      "dept": "Production",
+      "phone": "+1 323 555 0144",
+      "email": "miles@frameforge.demo"
+    },
+    {
+      "id": "contact-3",
+      "name": "Petra Kranjc",
+      "role": "1st AD",
+      "dept": "AD",
+      "phone": "+386 40 555 212",
+      "email": "petra@frameforge.demo"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "task-1",
+      "title": "Confirm marine police permit",
+      "owner": "Production Office",
+      "due": "2026-05-26",
+      "priority": "high",
+      "status": "In Progress"
+    },
+    {
+      "id": "task-2",
+      "title": "Lock pier drone exclusion zone",
+      "owner": "Locations",
+      "due": "2026-05-27",
+      "priority": "medium",
+      "status": "Not Started"
+    },
+    {
+      "id": "task-3",
+      "title": "Update continuity stills after scene 24B",
+      "owner": "Script Supervisor",
+      "due": "2026-05-27",
+      "priority": "medium",
+      "status": "Done"
+    }
+  ],
+  "budget": [
+    {
+      "id": "budget-1",
+      "category": "Cast",
+      "estimated": 135000,
+      "actual": 129400
+    },
+    {
+      "id": "budget-2",
+      "category": "Crew",
+      "estimated": 246000,
+      "actual": 252900
+    },
+    {
+      "id": "budget-3",
+      "category": "Camera & Grip",
+      "estimated": 92000,
+      "actual": 88700
+    },
+    {
+      "id": "budget-4",
+      "category": "Locations",
+      "estimated": 48000,
+      "actual": 43150
+    },
+    {
+      "id": "budget-5",
+      "category": "Art Department",
+      "estimated": 77000,
+      "actual": 81500
+    },
+    {
+      "id": "budget-6",
+      "category": "Post",
+      "estimated": 164000,
+      "actual": 133000
+    }
+  ],
+  "assets": [
+    {
+      "id": "asset-1",
+      "name": "Warehouse lighting plot v7",
+      "type": "PDF",
+      "owner": "Lighting",
+      "updated": "2026-05-25",
+      "tag": "Tech scout"
+    },
+    {
+      "id": "asset-2",
+      "name": "Harbor drone risk assessment",
+      "type": "DOC",
+      "owner": "Production",
+      "updated": "2026-05-24",
+      "tag": "Safety"
+    },
+    {
+      "id": "asset-3",
+      "name": "Scene 24A storyboard",
+      "type": "PNG",
+      "owner": "Direction",
+      "updated": "2026-05-26",
+      "tag": "Creative"
+    }
+  ]
+}
