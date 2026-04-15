@@ -1,4 +1,5 @@
-import { SafeAreaView, ScrollView, StyleSheet, Text, View, type PropsWithChildren } from "react-native";
+import type { PropsWithChildren } from "react";
+import { SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { mobileTheme } from "../constants/theme";
 
 interface AppScreenProps extends PropsWithChildren {

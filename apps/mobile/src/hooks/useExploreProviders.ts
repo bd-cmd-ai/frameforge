@@ -1,38 +1,28 @@
 import { useEffect, useState } from "react";
-import { providerApi } from "@radar-domace/api";
+import { getActiveProvidersNearby } from "@radar-domace/api";
 import type { ProviderSummary } from "@radar-domace/types";
-import { useMobileAppState } from "../lib/app-state";
+import { getMobileSupabaseClient } from "../lib/supabase";
 
 export const useExploreProviders = () => {
-  const { filters } = useMobileAppState();
   const [providers, setProviders] = useState<ProviderSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-
-    providerApi
-      .listProviders(filters)
-      .then((response) => {
-        if (!cancelled) {
-          setProviders(response);
-          setLoading(false);
-        }
+    getActiveProvidersNearby(getMobileSupabaseClient(), {
+      lat: 46.0569,
+      lng: 14.5058,
+      radiusKm: 25,
+    })
+      .then((rows) => {
+        setProviders(rows);
+        setLoading(false);
       })
-      .catch(() => {
-        if (!cancelled) {
-          setError("Nearby producers could not be loaded.");
-          setLoading(false);
-        }
+      .catch((cause) => {
+        setError(cause instanceof Error ? cause.message : "Nearby provider query failed.");
+        setLoading(false);
       });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [filters]);
+  }, []);
 
   return { providers, loading, error };
 };

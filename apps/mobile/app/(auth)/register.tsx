@@ -1,17 +1,54 @@
 import { router } from "expo-router";
-import { StyleSheet, TextInput, View } from "react-native";
+import { useState } from "react";
+import { StyleSheet, Text, TextInput, View } from "react-native";
 import { AppButton } from "../../src/components/AppButton";
 import { AppScreen } from "../../src/components/AppScreen";
+import { useAuth } from "../../src/lib/auth";
 
 export default function RegisterScreen() {
+  const { signUpWithEmail, loading } = useAuth();
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async () => {
+    if (!fullName.trim() || !email.trim() || !password) {
+      setError("Fill in your name, email, and password.");
+      return;
+    }
+
+    if (password.length < 8) {
+      setError("Use at least 8 characters for the password.");
+      return;
+    }
+
+    const nextError = await signUpWithEmail({
+      email: email.trim(),
+      password,
+      fullName: fullName.trim(),
+      role: "consumer",
+    });
+    if (nextError) {
+      setError(nextError);
+      return;
+    }
+    router.replace("/(tabs)/explore");
+  };
+
   return (
-    <AppScreen title="Create account" subtitle="Consumer onboarding is lightweight for the MVP. Provider claiming happens in the web portal.">
+    <AppScreen title="Create account" subtitle="New mobile users are created as `consumer` profiles by default.">
       <View style={styles.form}>
-        <TextInput placeholder="Full name" style={styles.input} />
-        <TextInput placeholder="Email" style={styles.input} keyboardType="email-address" autoCapitalize="none" />
-        <TextInput placeholder="Password" style={styles.input} secureTextEntry />
+        <TextInput value={fullName} onChangeText={setFullName} placeholder="Full name" style={styles.input} />
+        <TextInput value={email} onChangeText={setEmail} placeholder="Email" style={styles.input} autoCapitalize="none" />
+        <TextInput value={password} onChangeText={setPassword} placeholder="Password" style={styles.input} secureTextEntry />
       </View>
-      <AppButton label="Create account" onPress={() => router.replace("/(tabs)/explore")} />
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <AppButton
+        label={loading ? "Creating..." : "Create account"}
+        onPress={() => void submit()}
+        disabled={loading}
+      />
     </AppScreen>
   );
 }
@@ -27,5 +64,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#fffdf7",
     borderWidth: 1,
     borderColor: "#d8d0c0",
+  },
+  error: {
+    color: "#b03c1f",
   },
 });

@@ -1,42 +1,26 @@
 import { router } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { AppButton } from "../../src/components/AppButton";
 import { AppScreen } from "../../src/components/AppScreen";
+import { useAuth } from "../../src/lib/auth";
 
 export default function ProfileScreen() {
+  const { profile, signOutCurrentUser } = useAuth();
+
   return (
-    <AppScreen title="Profile & settings" subtitle="Consumer controls stay intentionally light in the MVP.">
-      <View style={styles.card}>
-        <Text style={styles.label}>Language</Text>
-        <Text style={styles.value}>Slovenščina</Text>
+    <AppScreen title="Profile" subtitle="Session, role, and sign-out verification.">
+      <View>
+        <Text>Name: {profile?.fullName || "n/a"}</Text>
+        <Text>Email: {profile?.email || "n/a"}</Text>
+        <Text>Role: {profile?.role || "n/a"}</Text>
       </View>
-      <View style={styles.card}>
-        <Text style={styles.label}>Location access</Text>
-        <Text style={styles.value}>While using the app</Text>
-      </View>
-      <AppButton label="Open provider portal" variant="secondary" onPress={() => router.push("/(auth)/login")} />
-      <AppButton label="Sign out" variant="ghost" onPress={() => router.replace("/splash")} />
+      <AppButton
+        label="Sign out"
+        onPress={async () => {
+          await signOutCurrentUser();
+          router.replace("/(auth)/login");
+        }}
+      />
     </AppScreen>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    padding: 16,
-    borderRadius: 18,
-    backgroundColor: "#fffdf7",
-    borderWidth: 1,
-    borderColor: "#d8d0c0",
-    gap: 6,
-  },
-  label: {
-    fontSize: 13,
-    color: "#627063",
-    textTransform: "uppercase",
-  },
-  value: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#142013",
-  },
-});

@@ -1,7 +1,33 @@
+import * as SecureStore from "expo-secure-store";
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@radar-domace/types";
+import { getMissingMobileSupabaseMessage, isMobileSupabaseConfigured, mobileEnv } from "./env";
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = mobileEnv.supabaseUrl;
+const supabaseAnonKey = mobileEnv.supabaseAnonKey;
 
-export const mobileSupabase =
-  supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
+const secureStorage = {
+  getItem: (key: string) => SecureStore.getItemAsync(key),
+  setItem: (key: string, value: string) => SecureStore.setItemAsync(key, value),
+  removeItem: (key: string) => SecureStore.deleteItemAsync(key),
+};
+
+export const mobileSupabase = isMobileSupabaseConfigured
+  ? createClient<Database>(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        storage: secureStorage,
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: false,
+      },
+    })
+  : null;
+
+export const getMobileSupabaseClient = () => {
+  if (!mobileSupabase) {
+    throw new Error(getMissingMobileSupabaseMessage());
+  }
+  return mobileSupabase;
+};
+
+export { isMobileSupabaseConfigured };
