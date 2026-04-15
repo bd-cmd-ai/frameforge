@@ -1,12 +1,12 @@
-const readEnv = (key: string) => process.env[key]?.trim() ?? "";
+const trimEnv = (value?: string) => value?.trim() ?? "";
 
 export const webEnv = {
-  supabaseUrl: readEnv("NEXT_PUBLIC_SUPABASE_URL"),
-  supabaseAnonKey: readEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
-  googleMapsApiKey: readEnv("NEXT_PUBLIC_GOOGLE_MAPS_API_KEY"),
-  providerImagesBucket: readEnv("NEXT_PUBLIC_PROVIDER_IMAGES_BUCKET") || "provider-images",
-  appUrl: readEnv("NEXT_PUBLIC_APP_URL") || "http://localhost:3000",
-  serviceRoleKey: readEnv("SUPABASE_SERVICE_ROLE_KEY"),
+  supabaseUrl: trimEnv(process.env.NEXT_PUBLIC_SUPABASE_URL),
+  supabaseAnonKey: trimEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+  googleMapsApiKey: trimEnv(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY),
+  providerImagesBucket: trimEnv(process.env.NEXT_PUBLIC_PROVIDER_IMAGES_BUCKET) || "provider-images",
+  appUrl: trimEnv(process.env.NEXT_PUBLIC_APP_URL) || "http://localhost:3000",
+  serviceRoleKey: trimEnv(process.env.SUPABASE_SERVICE_ROLE_KEY),
 };
 
 export const missingWebSupabaseEnv = [
