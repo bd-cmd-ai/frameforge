@@ -23,6 +23,8 @@
     "build": "npm run build:web",
     "build:web": "npm run build --workspace @radar-domace/web",
     "build:mobile": "npm run export --workspace @radar-domace/mobile",
+    "start": "npm run start:web",
+    "start:web": "npm run start --workspace @radar-domace/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "test": "node --test tests/*.test.mjs",
