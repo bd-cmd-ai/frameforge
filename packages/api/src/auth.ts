@@ -15,6 +15,10 @@ export interface SignUpInput extends SignInInput {
   preferredLocale?: "sl" | "en" | "de" | "it";
 }
 
+export interface OAuthSignInInput {
+  redirectTo: string;
+}
+
 const isAuthSessionMissingError = (error: { name?: string; message?: string } | null) =>
   error?.name === "AuthSessionMissingError" || error?.message?.toLowerCase().includes("auth session missing");
 
@@ -66,6 +70,14 @@ export const signUp = async (client: AuthSupabaseClient, input: SignUpInput): Pr
         role: input.role ?? "consumer",
         preferred_locale: input.preferredLocale ?? "sl",
       },
+    },
+  });
+
+export const signInWithGoogle = async (client: AuthSupabaseClient, input: OAuthSignInInput) =>
+  client.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: input.redirectTo,
     },
   });
 

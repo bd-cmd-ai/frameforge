@@ -1,6 +1,6 @@
 "use client";
 
-import { signIn, signUp, getCurrentProfile } from "@radar-domace/api";
+import { getCurrentProfile, signIn, signInWithGoogle, signUp } from "@radar-domace/api";
 import type { AppRole } from "@radar-domace/types";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -23,6 +23,19 @@ export const LoginForm = () => {
     password: "",
     role: "provider" as AppRole,
   });
+
+  const handleGoogleSignIn = () => {
+    startTransition(async () => {
+      setError(null);
+      const client = createWebBrowserSupabaseClient();
+      const redirectTo = `${window.location.origin}/auth/callback`;
+      const result = await signInWithGoogle(client, { redirectTo });
+
+      if (result.error) {
+        setError(result.error.message);
+      }
+    });
+  };
 
   const handleSubmit = () => {
     startTransition(async () => {
@@ -65,6 +78,11 @@ export const LoginForm = () => {
         </button>
         <button className={mode === "sign-up" ? "primary-button" : "ghost-button"} onClick={() => setMode("sign-up")} type="button">
           Sign up
+        </button>
+      </div>
+      <div className="auth-actions" style={{ marginBottom: 18 }}>
+        <button className="secondary-button" onClick={handleGoogleSignIn} type="button" disabled={isPending}>
+          {isPending ? "Working..." : "Continue with Google"}
         </button>
       </div>
       <div className="form-grid">
