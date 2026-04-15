@@ -38,17 +38,23 @@ export async function middleware(request: NextRequest) {
 
   let user: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"] = null;
 
+  const pathname = request.nextUrl.pathname;
+  const isProtected = protectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+
   try {
     const result = await supabase.auth.getUser();
     user = result.data.user;
   } catch (error) {
     if (!isAuthSessionMissingError(error as { name?: string; message?: string })) {
-      throw error;
+      if (isProtected) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/login";
+        return NextResponse.redirect(url);
+      }
+
+      return response;
     }
   }
-
-  const pathname = request.nextUrl.pathname;
-  const isProtected = protectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 
   if (!user && isProtected) {
     const url = request.nextUrl.clone();
