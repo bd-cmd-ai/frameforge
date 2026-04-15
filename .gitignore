@@ -6,8 +6,10 @@ coverage
 .turbo
 .DS_Store
 *.log
+*.tsbuildinfo
 apps/web/.next
 apps/mobile/.expo
 apps/mobile/dist
 supabase/.temp
 data/*.local.json
+patches/
