@@ -75,6 +75,9 @@ as $$
   );
 $$;
 
+alter table public.providers
+  add column if not exists promoted_until timestamptz;
+
 create or replace function public.provider_is_currently_promoted(
   provider_uuid uuid,
   reference_ts timestamptz default timezone('utc', now())
@@ -197,8 +200,7 @@ end
 $$;
 
 alter table public.providers
-  add column if not exists source_type public.provider_source_type not null default 'manual',
-  add column if not exists promoted_until timestamptz;
+  add column if not exists source_type public.provider_source_type not null default 'manual';
 
 do $$
 begin
