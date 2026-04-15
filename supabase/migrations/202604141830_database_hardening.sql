@@ -667,6 +667,12 @@ for all
 using (public.is_admin())
 with check (public.is_admin());
 
+drop policy if exists "admins read all profiles" on public.profiles;
+create policy "admins read all profiles"
+on public.profiles
+for select
+using (auth.uid() = id or public.is_admin());
+
 create policy "admins can update profiles"
 on public.profiles
 for update
