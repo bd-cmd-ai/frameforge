@@ -10,8 +10,15 @@ const getRoleRedirectPath = (role: Database["public"]["Enums"]["app_role"]) => {
   return "/";
 };
 
+const isAuthSessionMissingError = (error: { name?: string; message?: string } | null) =>
+  error?.name === "AuthSessionMissingError" || error?.message?.toLowerCase().includes("auth session missing");
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
+
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return response;
+  }
 
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
@@ -29,9 +36,16 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"] = null;
+
+  try {
+    const result = await supabase.auth.getUser();
+    user = result.data.user;
+  } catch (error) {
+    if (!isAuthSessionMissingError(error as { name?: string; message?: string })) {
+      throw error;
+    }
+  }
 
   const pathname = request.nextUrl.pathname;
   const isProtected = protectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
