@@ -1,59 +1,28 @@
-import { providerApi } from "@radar-domace/api";
-import { Badge } from "../../../../components/badge";
-import { SectionCard } from "../../../../components/section-card";
+import { getMyProviderOffers } from "@radar-domace/api";
+import { EmptyState } from "../../../../components/provider-portal/empty-state";
+import { OfferPostsManager } from "../../../../components/provider-portal/offer-posts-manager";
+import { ProviderSectionCard } from "../../../../components/provider-portal/provider-section-card";
+import { getProviderPortalContext } from "../../../../lib/provider/portal";
 
 export default async function ProviderOffersPage() {
-  const provider = await providerApi.getProvider("provider-1");
-  if (!provider) return null;
+  const { supabase, provider, pendingClaim } = await getProviderPortalContext();
+
+  if (!provider) {
+    return (
+      <ProviderSectionCard title="Offers" description="Create time-based posts that later feed Fresh Today or Discount badges in the mobile app.">
+        <EmptyState
+          title={pendingClaim ? "Claim pending" : "No provider linked yet"}
+          description={pendingClaim ? "Offer management unlocks after claim approval." : "Claim a provider record first to create offers."}
+          ctaHref="/provider/claim"
+          ctaLabel="Open claim flow"
+        />
+      </ProviderSectionCard>
+    );
+  }
+
+  const offers = await getMyProviderOffers(supabase, provider.id);
 
   return (
-    <div className="grid two-col">
-      <SectionCard title="Active offers" description="Fresh Today and Discount badges are driven from approved active posts.">
-        <div className="list">
-          {provider.offers.map((offer) => (
-            <div key={offer.id} className="list-item">
-              <div>
-                <strong>{offer.title.sl}</strong>
-                <p className="muted">{offer.body.sl}</p>
-              </div>
-              <Badge>{offer.type}</Badge>
-            </div>
-          ))}
-        </div>
-      </SectionCard>
-
-      <SectionCard title="Create offer post" description="This form maps directly to the `product_offers` table.">
-        <form className="form-grid">
-          <div className="field full">
-            <label>Offer type</label>
-            <select defaultValue="fresh_today">
-              <option value="fresh_today">Fresh today</option>
-              <option value="discount">Discount</option>
-              <option value="general">General</option>
-              <option value="promoted">Promoted</option>
-            </select>
-          </div>
-          <div className="field full">
-            <label>Title (SL)</label>
-            <input placeholder="Danes sveže ..." />
-          </div>
-          <div className="field full">
-            <label>Body (SL)</label>
-            <textarea placeholder="Describe the offer and timing." />
-          </div>
-          <div className="field">
-            <label>Starts at</label>
-            <input type="datetime-local" />
-          </div>
-          <div className="field">
-            <label>Ends at</label>
-            <input type="datetime-local" />
-          </div>
-        </form>
-        <div style={{ marginTop: 18 }}>
-          <button className="primary-button" type="button">Create offer</button>
-        </div>
-      </SectionCard>
-    </div>
+    <OfferPostsManager providerId={provider.id} offers={offers} />
   );
 }

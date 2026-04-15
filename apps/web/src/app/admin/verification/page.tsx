@@ -1,30 +1,36 @@
-import { providerApi } from "@radar-domace/api";
-import { SectionCard } from "../../../components/section-card";
+import Link from "next/link";
+import { getAdminProviders } from "@radar-domace/api";
+import { EmptyState } from "../../../components/admin/empty-state";
+import { ProviderSectionCard } from "../../../components/provider-portal/provider-section-card";
+import { pickLocalizedText } from "../../../lib/admin/format";
+import { requireRole } from "../../../lib/auth";
 
 export default async function VerificationPage() {
-  const providers = await providerApi.listProviders({
-    radiusKm: 500,
-    categoryIds: [],
-    onlyOpenNow: false,
-    onlyVerified: false,
-    onlyFreshToday: false,
-  });
-
-  const unverified = providers.filter((provider) => !provider.isVerified);
+  const { supabase } = await requireRole("admin");
+  const providers = await getAdminProviders(supabase, { verified: false });
 
   return (
-    <SectionCard title="Verify providers" description="Verification controls the trust badge in the consumer app.">
-      <div className="list">
-        {unverified.map((provider) => (
-          <div key={provider.id} className="list-item">
-            <div>
-              <strong>{provider.name.sl}</strong>
-              <p className="muted">{provider.address.sl}</p>
+    <ProviderSectionCard title="Verification queue" description="Providers that are still missing the verified flag.">
+      {providers.length === 0 ? (
+        <EmptyState title="No verification queue" description="Every visible provider is already verified." />
+      ) : (
+        <div className="list">
+          {providers.map((provider) => (
+            <div key={provider.id} className="list-item">
+              <div>
+                <strong>{pickLocalizedText(provider.name)}</strong>
+                <p className="muted">{provider.cityLabel}</p>
+              </div>
+              <div className="inline-actions">
+                <span className="badge">Pending</span>
+                <Link href={`/admin/providers/${provider.id}`} className="ghost-button">
+                  Review
+                </Link>
+              </div>
             </div>
-            <button className="primary-button" type="button">Verify provider</button>
-          </div>
-        ))}
-      </div>
-    </SectionCard>
+          ))}
+        </div>
+      )}
+    </ProviderSectionCard>
   );
 }

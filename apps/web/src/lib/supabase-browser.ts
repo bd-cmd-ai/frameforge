@@ -1,5 +1,11 @@
 import { createBrowserClient } from "@supabase/ssr";
-import { webEnv } from "./env";
+import type { Database } from "@radar-domace/types";
+import { getMissingWebSupabaseMessage, isWebSupabaseConfigured, webEnv } from "./env";
 
-export const createWebBrowserSupabaseClient = () =>
-  createBrowserClient(webEnv.supabaseUrl, webEnv.supabaseAnonKey);
+export const createWebBrowserSupabaseClient = () => {
+  if (!isWebSupabaseConfigured) {
+    throw new Error(getMissingWebSupabaseMessage());
+  }
+
+  return createBrowserClient<Database>(webEnv.supabaseUrl, webEnv.supabaseAnonKey);
+};

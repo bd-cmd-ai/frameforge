@@ -1,27 +1,30 @@
-import { providerApi } from "@radar-domace/api";
-import { Badge } from "../../../../components/badge";
-import { SectionCard } from "../../../../components/section-card";
+import { getActiveCategories } from "@radar-domace/api";
+import { CategorySelector } from "../../../../components/provider-portal/category-selector";
+import { EmptyState } from "../../../../components/provider-portal/empty-state";
+import { ProviderSectionCard } from "../../../../components/provider-portal/provider-section-card";
+import { getProviderPortalContext } from "../../../../lib/provider/portal";
 
 export default async function ProviderCategoriesPage() {
-  const allCategories = await providerApi.listCategories();
-  const provider = await providerApi.getProvider("provider-1");
-  if (!provider) return null;
+  const { supabase, provider, pendingClaim } = await getProviderPortalContext();
 
-  const selected = new Set(provider.categories.map((category) => category.id));
+  if (!provider) {
+    return (
+      <ProviderSectionCard title="Categories" description="Choose the types of products and specialties you offer.">
+        <EmptyState
+          title={pendingClaim ? "Claim pending" : "No provider linked yet"}
+          description={pendingClaim ? "Categories unlock after claim approval." : "Claim a provider record first to manage categories."}
+          ctaHref="/provider/claim"
+          ctaLabel="Open claim flow"
+        />
+      </ProviderSectionCard>
+    );
+  }
+
+  const categories = await getActiveCategories(supabase);
 
   return (
-    <SectionCard title="Manage categories" description="At least one category is required before a provider can appear in the app.">
-      <div className="list">
-        {allCategories.map((category) => (
-          <div key={category.id} className="list-item">
-            <div>
-              <strong>{category.label.sl}</strong>
-              <p className="muted">{category.label.en}</p>
-            </div>
-            {selected.has(category.id) ? <Badge>Selected</Badge> : <button className="ghost-button">Add</button>}
-          </div>
-        ))}
-      </div>
-    </SectionCard>
+    <ProviderSectionCard title="Categories" description="Select the categories that best describe what travelers can buy from you.">
+      <CategorySelector providerId={provider.id} categories={categories} selectedIds={provider.categories.map((category) => category.id)} />
+    </ProviderSectionCard>
   );
 }

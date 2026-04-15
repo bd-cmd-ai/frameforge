@@ -1,5 +1,6 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
+import Link from "next/link";
+import { SignOutButton } from "./sign-out-button";
 
 interface NavItem {
   href: string;
@@ -34,9 +35,7 @@ export const DashboardShell = ({ title, eyebrow, navItems, children }: Dashboard
           <p className="page-eyebrow">{eyebrow}</p>
           <h2 className="page-title">{title}</h2>
         </div>
-        <Link href="/login" className="ghost-button">
-          Switch account
-        </Link>
+        <SignOutButton />
       </header>
       {children}
     </main>

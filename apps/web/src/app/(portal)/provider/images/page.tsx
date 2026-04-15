@@ -1,25 +1,23 @@
-import Image from "next/image";
-import { providerApi } from "@radar-domace/api";
-import { SectionCard } from "../../../../components/section-card";
+import { EmptyState } from "../../../../components/provider-portal/empty-state";
+import { ImageUploader } from "../../../../components/provider-portal/image-uploader";
+import { ProviderSectionCard } from "../../../../components/provider-portal/provider-section-card";
+import { getProviderPortalContext } from "../../../../lib/provider/portal";
 
 export default async function ProviderImagesPage() {
-  const provider = await providerApi.getProvider("provider-1");
-  if (!provider) return null;
+  const { provider, pendingClaim } = await getProviderPortalContext();
 
   return (
-    <SectionCard title="Manage images" description="Supabase Storage is the source of truth for provider galleries.">
-      <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-        {provider.images.map((image) => (
-          <div key={image.id} className="table-card">
-            <Image src={image.path} alt={image.alt.en} width={420} height={260} style={{ width: "100%", height: "auto", borderRadius: 18 }} />
-            <p><strong>{image.alt.sl}</strong></p>
-            <p className="muted">{image.isCover ? "Cover image" : "Gallery image"}</p>
-          </div>
-        ))}
-      </div>
-      <div style={{ marginTop: 18 }}>
-        <button className="primary-button" type="button">Upload new image</button>
-      </div>
-    </SectionCard>
+    <ProviderSectionCard title="Images" description="Upload a small gallery, reorder it, and choose which image becomes the primary cover.">
+      {!provider ? (
+        <EmptyState
+          title={pendingClaim ? "Claim pending" : "No provider linked yet"}
+          description={pendingClaim ? "Image management unlocks after approval." : "Claim a provider record first to upload images."}
+          ctaHref="/provider/claim"
+          ctaLabel="Open claim flow"
+        />
+      ) : (
+        <ImageUploader providerId={provider.id} initialImages={provider.images} />
+      )}
+    </ProviderSectionCard>
   );
 }
