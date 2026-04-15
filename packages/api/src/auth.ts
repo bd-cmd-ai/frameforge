@@ -15,15 +15,24 @@ export interface SignUpInput extends SignInInput {
   preferredLocale?: "sl" | "en" | "de" | "it";
 }
 
+const isAuthSessionMissingError = (error: { name?: string; message?: string } | null) =>
+  error?.name === "AuthSessionMissingError" || error?.message?.toLowerCase().includes("auth session missing");
+
 export const getCurrentUser = async (client: AuthSupabaseClient): Promise<User | null> => {
   const { data, error } = await client.auth.getUser();
-  if (error) throw error;
+  if (error) {
+    if (isAuthSessionMissingError(error)) return null;
+    throw error;
+  }
   return data.user;
 };
 
 export const getCurrentSession = async (client: AuthSupabaseClient): Promise<Session | null> => {
   const { data, error } = await client.auth.getSession();
-  if (error) throw error;
+  if (error) {
+    if (isAuthSessionMissingError(error)) return null;
+    throw error;
+  }
   return data.session;
 };
 
