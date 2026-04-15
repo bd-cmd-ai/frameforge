@@ -6,7 +6,7 @@ import { createWebServerSupabaseClient } from "./supabase-server";
 export const getRoleRedirectPath = (role: AppRole) => {
   if (role === "admin") return "/admin/dashboard";
   if (role === "provider") return "/dashboard";
-  return "/";
+  return "/consumer";
 };
 
 export const requireAuth = async () => {

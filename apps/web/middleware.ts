@@ -7,7 +7,7 @@ const protectedPrefixes = ["/dashboard", "/provider", "/admin"];
 const getRoleRedirectPath = (role: Database["public"]["Enums"]["app_role"]) => {
   if (role === "admin") return "/admin";
   if (role === "provider") return "/dashboard";
-  return "/";
+  return "/consumer";
 };
 
 const isAuthSessionMissingError = (error: { name?: string; message?: string } | null) =>
@@ -68,7 +68,7 @@ export async function middleware(request: NextRequest) {
 
     if (role === "consumer" && (pathname.startsWith("/dashboard") || pathname.startsWith("/provider") || pathname.startsWith("/admin"))) {
       const url = request.nextUrl.clone();
-      url.pathname = "/";
+      url.pathname = "/consumer";
       return NextResponse.redirect(url);
     }
 
